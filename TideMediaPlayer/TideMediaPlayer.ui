@@ -28,8 +28,18 @@
   <property name="windowTitle">
    <string>TideMediaPlayer</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="TideMediaPlayer.qrc">
+    <normaloff>:/TideMediaPlayer/Icons/TideMediaPlayerLogo24.ico</normaloff>:/TideMediaPlayer/Icons/TideMediaPlayerLogo24.ico</iconset>
+  </property>
   <property name="styleSheet">
    <string notr="true"/>
+  </property>
+  <property name="iconSize">
+   <size>
+    <width>24</width>
+    <height>24</height>
+   </size>
   </property>
   <property name="toolButtonStyle">
    <enum>Qt::ToolButtonStyle::ToolButtonIconOnly</enum>
@@ -372,16 +382,17 @@ QMenuBar::item {
     </property>
     <addaction name="actionOpenFile"/>
    </widget>
-   <widget class="QMenu" name="menuAbout">
+   <widget class="QMenu" name="menuHelp">
     <property name="mouseTracking">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="title">
-     <string>关于</string>
+     <string>帮助</string>
     </property>
+    <addaction name="actionAbout"/>
    </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuAbout"/>
+   <addaction name="menuHelp"/>
   </widget>
   <action name="actionOpenFile">
    <property name="text">
@@ -389,6 +400,11 @@ QMenuBar::item {
    </property>
    <property name="shortcut">
     <string>Ctrl+A</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="text">
+    <string>关于</string>
    </property>
   </action>
  </widget>
@@ -413,8 +429,25 @@ QMenuBar::item {
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>actionAbout</sender>
+   <signal>triggered()</signal>
+   <receiver>TideMediaPlayer</receiver>
+   <slot>showAboutDialog()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>104</x>
+     <y>49</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>479</x>
+     <y>282</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>openFile()</slot>
+  <slot>showAboutDialog()</slot>
  </slots>
 </ui>

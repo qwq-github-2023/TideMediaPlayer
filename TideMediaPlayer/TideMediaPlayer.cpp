@@ -2,7 +2,7 @@
 #include "QFileDialog"  
 #include <QMessageBox>  
 #include <QPropertyAnimation>
-
+#include "AboutDialog.h"
 
 TideMediaPlayer::TideMediaPlayer(QWidget *parent)  
     : QMainWindow(parent)  
@@ -17,6 +17,12 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
 
 TideMediaPlayer::~TideMediaPlayer()  
 {}  
+
+void TideMediaPlayer::showAboutDialog() {
+    AboutDialog* about = new AboutDialog(this);
+    about->exec();
+    about->deleteLater();
+}
 
 void TideMediaPlayer::refreshImage(bool reload)
 {

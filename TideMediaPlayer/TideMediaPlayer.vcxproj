@@ -100,14 +100,23 @@
     <QtRcc Include="TideMediaPlayer.qrc" />
     <QtUic Include="TideMediaPlayer.ui" />
     <QtMoc Include="TideMediaPlayer.h" />
+    <ClCompile Include="AboutDialog.cpp" />
     <ClCompile Include="TideMediaHandle.cpp" />
     <ClCompile Include="TideMediaPlayer.cpp" />
     <ClCompile Include="main.cpp" />
-    <None Include="TideMediaPlayer.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <QtMoc Include="AboutDialog.h" />
+    <ClInclude Include="TideMediaHandle.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ResourceCompile Include="TideMediaPlayer.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="TideMediaHandle.h" />
+    <Image Include="Icons\TideMediaPlayer128.ico" />
+    <Image Include="Icons\TideMediaPlayerLogo.png" />
+    <Image Include="Icons\TideMediaPlayerLogo24.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

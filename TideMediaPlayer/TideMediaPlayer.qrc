@@ -1,4 +1,7 @@
 <RCC>
-    <qresource prefix="TideMediaPlayer">
-    </qresource>
+  <qresource prefix="TideMediaPlayer">
+    <file>Icons/TideMediaPlayer128.ico</file>
+    <file>Icons/TideMediaPlayerLogo.png</file>
+    <file>Icons/TideMediaPlayerLogo24.ico</file>
+  </qresource>
 </RCC>

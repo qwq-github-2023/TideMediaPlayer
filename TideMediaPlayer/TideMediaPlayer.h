@@ -16,6 +16,7 @@ public:
     void refreshStage(bool reload = true);
 public slots:
     void openFile();
+    void showAboutDialog();
     void mouseMoveEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
 private:
