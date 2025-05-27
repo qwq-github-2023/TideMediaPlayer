@@ -44,7 +44,10 @@ void WidgetStageGL::wheelEvent(QWheelEvent* event)
     const QPointF pos = event->position();
     const qreal oldScale = m_scaleFactor;
     m_scaleFactor *= (event->angleDelta().y() > 0) ? 1.05 : 0.95;
-    m_scaleFactor = qBound(m_scaleFactor, 0.01, 100.0);
+    if (m_scaleFactor < 0.01)
+        m_scaleFactor = 0.01;
+    if (m_scaleFactor > 100.0)
+        m_scaleFactor = 100.0;
     // 保持以鼠标为中心缩放
     QPointF delta = (pos - m_offset) / oldScale;
     m_offset = pos - delta * m_scaleFactor;
