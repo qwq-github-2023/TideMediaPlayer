@@ -1,1 +1,2 @@
 # TideMediaPlayer
+编译前请先给VS安装openGL
