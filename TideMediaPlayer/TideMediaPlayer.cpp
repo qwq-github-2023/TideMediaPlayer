@@ -112,6 +112,7 @@ void TideMediaPlayer::resetScale()
 {
     refreshStage(false);
     ui.pushButtonResetScale->hide();
+    ui.openGLWidgetStage->m_scaled = false;
 }
 void TideMediaPlayer::mouseMoveEvent(QMouseEvent* event) {
     // 控制栏显示
