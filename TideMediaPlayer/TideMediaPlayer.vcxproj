@@ -37,7 +37,7 @@
   </ImportGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
     <QtInstall>msvc2022_64</QtInstall>
-    <QtModules>core;gui;widgets;opengl;openglwidgets</QtModules>
+    <QtModules>core;gui;widgets;opengl;openglwidgets;svg</QtModules>
     <QtBuildConfig>debug</QtBuildConfig>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
@@ -101,6 +101,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ImageButton.cpp" />
     <ClCompile Include="WidgetStageGL.cpp" />
     <QtRcc Include="TideMediaPlayer.qrc" />
     <QtUic Include="TideMediaPlayer.ui" />
@@ -111,6 +112,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="ImageButton.h" />
     <ClInclude Include="resource.h" />
     <QtMoc Include="WidgetStageGL.h" />
     <QtMoc Include="AboutDialog.h" />

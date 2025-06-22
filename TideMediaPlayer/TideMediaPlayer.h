@@ -13,6 +13,8 @@ class TideMediaPlayer : public QMainWindow
     Q_OBJECT
 
 public:
+    Ui::TideMediaPlayer ui;
+
     TideMediaPlayer(QWidget *parent = nullptr);
     ~TideMediaPlayer();
     void refreshStage(bool reload = true);
@@ -20,11 +22,10 @@ public:
 public slots:
     void openFile();
     void showAboutDialog();
+    void resetScale();
     void mouseMoveEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
 private:
-    Ui::TideMediaPlayer ui;
-
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;
     

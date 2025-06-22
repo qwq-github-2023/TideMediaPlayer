@@ -10,8 +10,14 @@ WidgetStageGL::WidgetStageGL(QWidget* parent)
     setMouseTracking(true);
 }
 
+bool WidgetStageGL::isScaled()
+{
+    return m_scaled;
+}
+
 void WidgetStageGL::loadPixmap(const QPixmap& pixmap)
 {
+    m_scaled = false;
     m_pixmap = pixmap;
     m_scaleFactor = qMin(
         static_cast<qreal>(this->size().height()) / m_pixmap.size().height(),
@@ -53,6 +59,9 @@ void WidgetStageGL::wheelEvent(QWheelEvent* event)
     m_offset = pos - delta * m_scaleFactor;
 
     m_tideMediaPlayer->showScaleLabel(m_scaleFactor);
+
+    m_tideMediaPlayer->ui.pushButtonResetScale->show();
+    m_scaled = true;
     update();
 }
 
@@ -68,6 +77,10 @@ void WidgetStageGL::mouseMoveEvent(QMouseEvent* event)
         QPointF delta = event->pos() - m_lastMousePos;
         m_offset += delta;
         m_lastMousePos = event->pos();
+
+        m_tideMediaPlayer->ui.pushButtonResetScale->show();
+        m_scaled = true;
         update();
     }
+    m_tideMediaPlayer->mouseMoveEvent(event);
 }

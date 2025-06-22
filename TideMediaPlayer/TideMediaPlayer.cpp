@@ -8,15 +8,18 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
     : QMainWindow(parent)  
 {  
     ui.setupUi(this);  
+    ui.pushButtonResetScale->hide();
+
     hideControlsTimer.setSingleShot(true);  
     connect(&hideControlsTimer, &QTimer::timeout, ui.widgetController, &QWidget::hide);  
-
+    connect(&hideControlsTimer, &QTimer::timeout, ui.pushButtonResetScale, &QPushButton::hide);
+    
     ui.labelScale->hide();  
     labelScaleTimer.setSingleShot(true);  
     connect(&labelScaleTimer, &QTimer::timeout, ui.labelScale, &QLabel::hide);  
 
-    ui.widgetController->setEnabled(false);  
-
+    ui.widgetController->setEnabled(false);
+    
     ui.openGLWidgetStage->setTideMediaPlayer(this);
 }  
 
@@ -105,8 +108,16 @@ void TideMediaPlayer::openFile()
         QMessageBox::critical(nullptr, "错误", "文件不存在或无法打开！");  
     } 
 }
+void TideMediaPlayer::resetScale()
+{
+    refreshStage(false);
+    ui.pushButtonResetScale->hide();
+}
 void TideMediaPlayer::mouseMoveEvent(QMouseEvent* event) {
     // 控制栏显示
+    if (ui.openGLWidgetStage->isScaled()) {
+        ui.pushButtonResetScale->show();
+    }
     ui.widgetController->show();
     hideControlsTimer.start(5000);
     QMainWindow::mouseMoveEvent(event);

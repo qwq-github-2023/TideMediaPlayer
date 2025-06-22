@@ -1,7 +1,14 @@
 <RCC>
-  <qresource prefix="TideMediaPlayer">
-    <file>Icons/TideMediaPlayer128.ico</file>
-    <file>Icons/TideMediaPlayerLogo.png</file>
-    <file>Icons/TideMediaPlayerLogo24.ico</file>
-  </qresource>
+    <qresource prefix="/TideMediaPlayer">
+        <file>Icons/TideMediaPlayer128.ico</file>
+        <file>Icons/TideMediaPlayerLogo.png</file>
+        <file>Icons/TideMediaPlayerLogo24.ico</file>
+    </qresource>
+    <qresource prefix="/PlayButton">
+        <file>Icons/PlayBtn-Pause.svg</file>
+        <file>Icons/PlayBtn-PauseHover.svg</file>
+        <file>Icons/PlayBtn-Play.svg</file>
+        <file>Icons/PlayBtn-PlayHover.svg</file>
+        <file>Icons/PlayBtn-Disable.svg</file>
+    </qresource>
 </RCC>

@@ -49,6 +49,9 @@
     <ClCompile Include="WidgetStageGL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ImageButton.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TideMediaHandle.h">
@@ -63,6 +66,9 @@
       <Filter>Header Files</Filter>
     </QtMoc>
     <QtMoc Include="WidgetStageGL.h">
+      <Filter>Header Files</Filter>
+    </QtMoc>
+    <QtMoc Include="ImageButton.h">
       <Filter>Header Files</Filter>
     </QtMoc>
   </ItemGroup>

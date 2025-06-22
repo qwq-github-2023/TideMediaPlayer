@@ -11,6 +11,7 @@ class WidgetStageGL : public QOpenGLWidget
 
 public:
     explicit WidgetStageGL(QWidget* parent = nullptr);
+    bool isScaled();
     void loadPixmap(const QPixmap& pixmap);
     void setTideMediaPlayer(TideMediaPlayer* _) { m_tideMediaPlayer = _; };
 protected:
@@ -25,6 +26,7 @@ private:
     QPointF m_lastMousePos;
     qreal m_scaleFactor = 1.0;
     TideMediaPlayer* m_tideMediaPlayer;
+    bool m_scaled = false;
 };
 
 #endif // WIDGETSTAGEGL_H
