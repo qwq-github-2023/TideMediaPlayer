@@ -101,9 +101,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DialogSetting.cpp" />
     <ClCompile Include="ImageButton.cpp" />
     <ClCompile Include="WidgetStageGL.cpp" />
     <QtRcc Include="TideMediaPlayer.qrc" />
+    <QtUic Include="DialogSetting.ui" />
     <QtUic Include="TideMediaPlayer.ui" />
     <QtMoc Include="TideMediaPlayer.h" />
     <ClCompile Include="AboutDialog.cpp" />
@@ -113,6 +115,7 @@
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="ImageButton.h" />
+    <QtMoc Include="DialogSetting.h" />
     <ClInclude Include="resource.h" />
     <QtMoc Include="WidgetStageGL.h" />
     <QtMoc Include="AboutDialog.h" />

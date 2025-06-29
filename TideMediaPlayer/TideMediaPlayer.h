@@ -11,7 +11,6 @@
 class TideMediaPlayer : public QMainWindow
 {
     Q_OBJECT
-
 public:
     Ui::TideMediaPlayer ui;
 
@@ -21,10 +20,12 @@ public:
     void showScaleLabel(qreal scaleFactor);
 public slots:
     void openFile();
+    void showSetting();
     void showAboutDialog();
     void resetScale();
     void mouseMoveEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    
 private:
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;

@@ -1,8 +1,10 @@
 #include "TideMediaPlayer.h"  
+#include "AboutDialog.h"
+#include "DialogSetting.h"
 #include "QFileDialog"  
 #include <QMessageBox>  
 #include <QPropertyAnimation>
-#include "AboutDialog.h"
+
 
 TideMediaPlayer::TideMediaPlayer(QWidget *parent)  
     : QMainWindow(parent)  
@@ -28,9 +30,16 @@ TideMediaPlayer::~TideMediaPlayer()
 
 void TideMediaPlayer::showAboutDialog() {
     // 显示关于窗口
-    AboutDialog* about = new AboutDialog(this);
-    about->exec();
-    about->deleteLater();
+    AboutDialog* aboutdlg = new AboutDialog(this);
+    aboutdlg->exec();
+    aboutdlg->deleteLater();
+}
+void TideMediaPlayer::showSetting()
+{
+    // 显示设置窗口
+    DialogSetting* settingdlg = new DialogSetting(this);
+    settingdlg->exec();
+    settingdlg->deleteLater();
 }
 void TideMediaPlayer::showScaleLabel(qreal scaleFactor)
 {
@@ -44,8 +53,9 @@ void TideMediaPlayer::refreshImage(bool reload)
     // 是否重载？
     QPixmap pixmap;
     if (reload) {
+		mediaHandle->reset();
         QByteArray imageData = mediaHandle->readAll();
-        pixmap.loadFromData(imageData);
+        
         if (!pixmap.loadFromData(imageData)) {
             qDebug() << "Unable load image.";
             QMessageBox::critical(nullptr, "错误", "加载图片失败！");

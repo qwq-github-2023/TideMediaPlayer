@@ -771,7 +771,7 @@
      <x>0</x>
      <y>0</y>
      <width>960</width>
-     <height>26</height>
+     <height>27</height>
     </rect>
    </property>
    <property name="mouseTracking">
@@ -792,7 +792,7 @@ QMenuBar::item {
     <property name="title">
      <string>文件</string>
     </property>
-    <addaction name="actionOpenFile"/>
+    <addaction name="actionFile"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="mouseTracking">
@@ -803,10 +803,17 @@ QMenuBar::item {
     </property>
     <addaction name="actionAbout"/>
    </widget>
+   <widget class="QMenu" name="menuSetting">
+    <property name="title">
+     <string>设置</string>
+    </property>
+    <addaction name="actionSetting"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuSetting"/>
    <addaction name="menuHelp"/>
   </widget>
-  <action name="actionOpenFile">
+  <action name="actionFile">
    <property name="text">
     <string>打开</string>
    </property>
@@ -817,6 +824,11 @@ QMenuBar::item {
   <action name="actionAbout">
    <property name="text">
     <string>关于</string>
+   </property>
+  </action>
+  <action name="actionSetting">
+   <property name="text">
+    <string>选项</string>
    </property>
   </action>
  </widget>
@@ -838,7 +850,7 @@ QMenuBar::item {
  </resources>
  <connections>
   <connection>
-   <sender>actionOpenFile</sender>
+   <sender>actionFile</sender>
    <signal>triggered()</signal>
    <receiver>TideMediaPlayer</receiver>
    <slot>openFile()</slot>
@@ -885,10 +897,27 @@ QMenuBar::item {
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>actionSetting</sender>
+   <signal>triggered()</signal>
+   <receiver>TideMediaPlayer</receiver>
+   <slot>showSetting()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>479</x>
+     <y>282</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>openFile()</slot>
   <slot>showAboutDialog()</slot>
   <slot>resetScale()</slot>
+  <slot>showSetting()</slot>
  </slots>
 </ui>
