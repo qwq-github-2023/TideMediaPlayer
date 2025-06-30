@@ -115,7 +115,7 @@
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QComboBox" name="comboBox">
+        <widget class="QComboBox" name="cBoxFPS">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -192,7 +192,7 @@
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="QComboBox" name="comboBox_2">
+        <widget class="QComboBox" name="cBoxPreDecodingSec">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
            <horstretch>0</horstretch>
@@ -278,6 +278,19 @@
        </property>
       </widget>
      </item>
+     <item>
+      <widget class="QPushButton" name="resetButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>恢复默认</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
   </layout>
@@ -291,8 +304,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>278</x>
-     <y>253</y>
+     <x>287</x>
+     <y>395</y>
     </hint>
     <hint type="destinationlabel">
      <x>96</x>
@@ -307,8 +320,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>369</x>
-     <y>253</y>
+     <x>368</x>
+     <y>395</y>
     </hint>
     <hint type="destinationlabel">
      <x>179</x>
@@ -316,5 +329,41 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>okButton</sender>
+   <signal>clicked()</signal>
+   <receiver>DialogSetting</receiver>
+   <slot>save()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>239</x>
+     <y>391</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>269</x>
+     <y>541</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>resetButton</sender>
+   <signal>clicked()</signal>
+   <receiver>DialogSetting</receiver>
+   <slot>dlgsetReset()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>401</x>
+     <y>387</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>384</x>
+     <y>510</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
+ <slots>
+  <slot>save()</slot>
+  <slot>dlgsetReset()</slot>
+ </slots>
 </ui>

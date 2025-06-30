@@ -1,9 +1,11 @@
 #include "TideMediaPlayer.h"  
 #include "AboutDialog.h"
 #include "DialogSetting.h"
+#include "Config.h"
 #include "QFileDialog"  
 #include <QMessageBox>  
 #include <QPropertyAnimation>
+#include <qsettings.h>
 
 
 TideMediaPlayer::TideMediaPlayer(QWidget *parent)  
@@ -23,6 +25,7 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
     ui.widgetController->setEnabled(false);
     
     ui.openGLWidgetStage->setTideMediaPlayer(this);
+    Config::init();
 }  
 
 TideMediaPlayer::~TideMediaPlayer()  
@@ -53,11 +56,8 @@ void TideMediaPlayer::refreshImage(bool reload)
     // 是否重载？
     QPixmap pixmap;
     if (reload) {
-		mediaHandle->reset();
-        QByteArray imageData = mediaHandle->readAll();
-        
-        if (!pixmap.loadFromData(imageData)) {
-            qDebug() << "Unable load image.";
+        pixmap = mediaHandle->getPixmap();
+        if (pixmap.isNull()) {
             QMessageBox::critical(nullptr, "错误", "加载图片失败！");
             return;
         }

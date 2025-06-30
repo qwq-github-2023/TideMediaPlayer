@@ -16,6 +16,8 @@ public:
 
 	bool loadMedia();
 	int getMediaType();
+	QPixmap getPixmap();
+
 private:
 	int mediaType = TMH_UNKNOWN;
 };

@@ -60,6 +60,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <IncludePath>ffmpeg\include;$(IncludePath)</IncludePath>
+    <LibraryPath>ffmpeg\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
   </PropertyGroup>
@@ -101,6 +103,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Config.cpp" />
     <ClCompile Include="DialogSetting.cpp" />
     <ClCompile Include="ImageButton.cpp" />
     <ClCompile Include="WidgetStageGL.cpp" />
@@ -116,6 +119,7 @@
   <ItemGroup>
     <QtMoc Include="ImageButton.h" />
     <QtMoc Include="DialogSetting.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="resource.h" />
     <QtMoc Include="WidgetStageGL.h" />
     <QtMoc Include="AboutDialog.h" />

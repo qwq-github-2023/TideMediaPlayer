@@ -9,7 +9,11 @@ class DialogSetting  : public QDialog
 public:
 	Ui::DialogSetting ui;
 
-	DialogSetting(QWidget *parent);
+	DialogSetting(QWidget *parent = nullptr);
 	~DialogSetting();
+	void loadConfig();
+public slots:
+	void save();
+	void dlgsetReset();
 };
 
