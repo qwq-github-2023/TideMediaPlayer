@@ -123,7 +123,6 @@ bool TideMediaHandle::loadAudio()
     avcodec_parameters_to_context(codec_ctx, st->codecpar);
     avcodec_open2(codec_ctx, codec, nullptr);
 
-
 }
 
 bool TideMediaHandle::loadMedia()
@@ -269,7 +268,13 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
 
 QBuffer* TideMediaHandle::getPCMAudio(uint64_t start_time, uint64_t preDecodingSec)
 {
-	
+    if (start_time > formatContext->duration) {
+		qDebug() << "Start time exceeds media duration.";
+        return NULL;
+    }
+    if (start_time + preDecodingSec > formatContext->duration) {
+		preDecodingSec = formatContext->duration - start_time;
+    }
     if (cacheAudio) {
         QBuffer* ret = cacheAudio;
 		std::thread(decodeAudioToQBuffer, start_time + preDecodingSec, preDecodingSec, true).detach();
@@ -282,6 +287,12 @@ QBuffer* TideMediaHandle::getPCMAudio(uint64_t start_time, uint64_t preDecodingS
 }
 
 void TideMediaHandle::setCacheAudioNULL() {
+	if (cacheAudio == nullptr) return;
     delete cacheAudio;
     cacheAudio = nullptr;
+}
+
+int64_t TideMediaHandle::getBitrate()
+{
+    return codec_ctx->bit_rate;
 }

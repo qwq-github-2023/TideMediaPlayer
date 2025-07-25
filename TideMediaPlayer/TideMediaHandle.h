@@ -49,8 +49,9 @@ public:
 	QPixmap getImagePixmap();
 	QBuffer* decodeAudioToQBuffer(uint64_t start_time, uint64_t preDecodingSec, bool isCache = false);
 	QBuffer* getPCMAudio(uint64_t start_time, uint64_t preDecodingSec);
-
 	void setCacheAudioNULL();
+	int64_t getBitrate();
+	
 private:
 	int mediaType = TMH_UNKNOWN;
 	AVFormatContext* formatContext = nullptr;
