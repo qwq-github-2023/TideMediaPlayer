@@ -277,11 +277,11 @@ QBuffer* TideMediaHandle::getPCMAudio(uint64_t start_time, uint64_t preDecodingS
     }
     if (cacheAudio) {
         QBuffer* ret = cacheAudio;
-		std::thread(decodeAudioToQBuffer, start_time + preDecodingSec, preDecodingSec, true).detach();
+		std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, start_time + preDecodingSec, preDecodingSec, true).detach();
         return ret;
     }
     else {
-		std::thread(decodeAudioToQBuffer, start_time + preDecodingSec, preDecodingSec, true).detach();
+        std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, start_time + preDecodingSec, preDecodingSec, true).detach();
 		return decodeAudioToQBuffer(start_time, preDecodingSec);
     }
 }
@@ -297,6 +297,29 @@ QAudioFormat TideMediaHandle::getAudioInfo()
     QAudioFormat format;
     format.setSampleRate(codec_ctx->sample_rate);
     format.setChannelCount(codec_ctx->ch_layout.nb_channels);
-    format.setSampleType(codec_ctx->sample_fmt);
+    QAudioFormat::SampleFormat sampleFormat;
+    int sampleSize = 0;
+    switch (codec_ctx->sample_fmt) {
+    case AV_SAMPLE_FMT_U8:
+    case AV_SAMPLE_FMT_U8P:
+        sampleFormat = QAudioFormat::UInt8;
+        break;
+    case AV_SAMPLE_FMT_S16:
+    case AV_SAMPLE_FMT_S16P:
+        sampleFormat = QAudioFormat::Int16;
+        break;
+    case AV_SAMPLE_FMT_S32:
+    case AV_SAMPLE_FMT_S32P:
+        sampleFormat = QAudioFormat::Int32;
+        break;
+    case AV_SAMPLE_FMT_FLT:
+    case AV_SAMPLE_FMT_FLTP:
+        sampleFormat = QAudioFormat::Float;
+        break;
+    default:
+        sampleFormat = QAudioFormat::Unknown;
+        break;
+    }
+    format.setSampleFormat(sampleFormat);
     return format;
 }

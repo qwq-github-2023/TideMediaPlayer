@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QMessageBox>
 #include <qbuffer.h>
+#include <QAudioFormat>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -25,10 +26,6 @@ extern "C" {
 #define TMH_VIDEO 0
 #define TMH_IMAGE 1
 #define TMH_AUDIO 2
-
-namespace Tide {
-	QSqlDatabase db;
-}
 
 
 class TideMediaHandle : public QFile
