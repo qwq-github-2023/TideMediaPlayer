@@ -83,7 +83,7 @@ void TideMediaPlayer::refreshAudio(bool reload)
 {
     mediaHandle->setCacheAudioNULL();
     QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong());
-
+    audioBuffer->open(QIODevice::ReadOnly);
     QAudioFormat format = mediaHandle->getAudioInfo();
     //format.setSampleRate(44100);                      // 采样率
     //format.setChannelCount(2);                        // 通道数，2表示立体声
@@ -92,11 +92,11 @@ void TideMediaPlayer::refreshAudio(bool reload)
     // 检查音频设备支持情况
     QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
     if (!outputDevice.isFormatSupported(format)) {
-        //qWarning() << "默认设备不支持此格式，使用最接近格式替代";
-        //format = outputDevice.preferredFormat();
-        QMessageBox::critical(nullptr, "错误", "您似乎没有正确的播放设备");
-        delete audioBuffer;
-        return;
+        qWarning() << "默认设备不支持此格式，使用最接近格式替代";
+        format = outputDevice.preferredFormat();
+        // QMessageBox::critical(nullptr, "错误", "您似乎没有正确的播放设备");
+        // delete audioBuffer;
+        // return;
     }
     
     QAudioSink audioSink(outputDevice, format);

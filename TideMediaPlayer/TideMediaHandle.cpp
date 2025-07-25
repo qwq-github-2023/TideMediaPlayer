@@ -61,10 +61,7 @@ void TideMediaHandle::init() {
 
 bool TideMediaHandle::loadAudio()
 {
-    if (!open(QIODevice::ReadOnly)) {
-        qDebug() << "Failed to open file:" << errorString();
-        return false;
-    }
+    this->reset();
     //QFileInfo fileInfo(*this);
 
     //QDateTime modified = fileInfo.lastModified();
@@ -134,6 +131,7 @@ bool TideMediaHandle::loadMedia()
     QMimeDatabase db;
     QMimeType type = db.mimeTypeForFile(this->fileName());
     qDebug() << type.name();
+    this->open(QIODevice::ReadOnly);
     if (type.name().startsWith("audio/")) {
         mediaType = TMH_AUDIO;
         loadAudio();
@@ -144,7 +142,6 @@ bool TideMediaHandle::loadMedia()
     } else {
         mediaType = TMH_UNKNOWN;
     }
-    this->open(QIODevice::ReadOnly);
     return mediaType != TMH_UNKNOWN ? true : false;
 }
 
@@ -169,8 +166,6 @@ QPixmap TideMediaHandle::getImagePixmap()
 }
 
 QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preDecodingSec, bool isCache) {
-    
-
     AVChannelLayout out_channel_layout = AV_CHANNEL_LAYOUT_STEREO;
     AVChannelLayout in_channel_layout;
 
@@ -208,6 +203,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
     }
     avcodec_flush_buffers(codec_ctx);
     QBuffer* pcmBuffer = new QBuffer();
+    pcmBuffer->open(QIODevice::WriteOnly);
     AVPacket* pkt = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
 
@@ -244,7 +240,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
         av_packet_unref(pkt);
     }
 
-
+    pcmBuffer->close();
     av_frame_free(&frame);
     av_packet_free(&pkt);
     swr_free(&swr_ctx);
@@ -273,6 +269,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
 
 QBuffer* TideMediaHandle::getPCMAudio(uint64_t start_time, uint64_t preDecodingSec)
 {
+    this->reset();
     if (start_time > formatContext->duration) {
 		qDebug() << "Start time exceeds media duration.";
         return NULL;
@@ -292,9 +289,9 @@ QBuffer* TideMediaHandle::getPCMAudio(uint64_t start_time, uint64_t preDecodingS
 }
 
 void TideMediaHandle::setCacheAudioNULL() {
-	if (cacheAudio == nullptr) return;
-    delete cacheAudio;
+	if (cacheAudio) delete cacheAudio;
     cacheAudio = nullptr;
+    return;
 }
 
 QAudioFormat TideMediaHandle::getAudioInfo()
