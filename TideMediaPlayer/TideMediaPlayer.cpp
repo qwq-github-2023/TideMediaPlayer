@@ -56,7 +56,7 @@ void TideMediaPlayer::refreshImage(bool reload)
     // 是否重载？
     QPixmap pixmap;
     if (reload) {
-        pixmap = mediaHandle->getPixmap();
+        pixmap = mediaHandle->getImagePixmap();
         if (pixmap.isNull()) {
             QMessageBox::critical(nullptr, "错误", "加载图片失败！");
             return;
@@ -77,6 +77,7 @@ void TideMediaPlayer::refreshVideo(bool reload)
 }
 void TideMediaPlayer::refreshAudio(bool reload)
 {
+    mediaHandle->getPCMAudio();
     ui.widgetController->setEnabled(true);
     return;
 }
