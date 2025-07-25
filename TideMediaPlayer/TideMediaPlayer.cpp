@@ -82,7 +82,7 @@ void TideMediaPlayer::refreshVideo(bool reload)
 void TideMediaPlayer::refreshAudio(bool reload)
 {
     mediaHandle->setCacheAudioNULL();
-    QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong());
+    QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
     audioBuffer->open(QIODevice::ReadOnly);
     QAudioFormat format = mediaHandle->getAudioInfo();
     //format.setSampleRate(44100);                      // 采样率

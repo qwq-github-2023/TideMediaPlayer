@@ -67,8 +67,8 @@ public:
 	bool loadAudio();
 	int getMediaType();
 	QPixmap getImagePixmap();
-	QBuffer* decodeAudioToQBuffer(uint64_t start_time, uint64_t preDecodingSec, bool isCache = false);
-	QBuffer* getPCMAudio(uint64_t start_time, uint64_t preDecodingSec);
+	QBuffer* decodeAudioToQBuffer(uint64_t startTime, uint64_t preDecodingSec, bool isCache = false);
+	QBuffer* getPCMAudio(uint64_t startTime, uint64_t preDecodingSec);
 	void setCacheAudioNULL();
 	QAudioFormat getAudioInfo();
 	

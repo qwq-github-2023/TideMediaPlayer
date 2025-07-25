@@ -166,6 +166,7 @@ QPixmap TideMediaHandle::getImagePixmap()
 }
 
 QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preDecodingSec, bool isCache) {
+    this->reset();
     AVChannelLayout out_channel_layout = AV_CHANNEL_LAYOUT_STEREO;
     AVChannelLayout in_channel_layout;
 
@@ -197,7 +198,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
         return NULL;
     }
 
-    int64_t target_pts = startTime * (AV_TIME_BASE / 1000);
+    int64_t target_pts = startTime; // * (AV_TIME_BASE / 1000);
     if (av_seek_frame(formatContext, -1, target_pts, AVSEEK_FLAG_BACKWARD) < 0) {
         fprintf(stderr, "Failed to seek.\n");
     }
@@ -230,7 +231,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
                     av_freep(&out_data[0]);
                     decoded_duration += frame_duration;
 
-                    if (decoded_duration >= (preDecodingSec / 1000.0)) {
+                    if (decoded_duration >= preDecodingSec/*(preDecodingSec / 1000.0)*/) {
                         decoding = false;
                         break;
                     }
@@ -267,25 +268,28 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
 	//Tide::db.commit();
 }
 
-QBuffer* TideMediaHandle::getPCMAudio(uint64_t start_time, uint64_t preDecodingSec)
+QBuffer* TideMediaHandle::getPCMAudio(uint64_t startTime, uint64_t preDecodingSec)
 {
-    this->reset();
-    if (start_time > formatContext->duration) {
-		qDebug() << "Start time exceeds media duration.";
-        return NULL;
+    startTime *= 1000;
+    preDecodingSec *= 1000;
+    
+    if (startTime > formatContext->duration) {
+		qWarning() << "Start time exceeds media duration.";
+        return nullptr;
     }
-    if (start_time + preDecodingSec > formatContext->duration) {
-		preDecodingSec = formatContext->duration - start_time;
-    }
-    if (cacheAudio) {
-        QBuffer* ret = cacheAudio;
-		std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, start_time + preDecodingSec, preDecodingSec, true).detach();
-        return ret;
+    QBuffer* t = cacheAudio;
+    if (startTime + preDecodingSec > formatContext->duration) {
+        preDecodingSec = formatContext->duration - startTime;
     }
     else {
-        std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, start_time + preDecodingSec, preDecodingSec, true).detach();
-		return decodeAudioToQBuffer(start_time, preDecodingSec);
+        if (startTime + 2 * preDecodingSec > formatContext->duration) {
+            // std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, formatContext->duration - startTime - preDecodingSec, true).detach();
+        }
+        else {
+            // std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, preDecodingSec, true).detach();
+        }
     }
+    return t ? t : decodeAudioToQBuffer(startTime, preDecodingSec);
 }
 
 void TideMediaHandle::setCacheAudioNULL() {
