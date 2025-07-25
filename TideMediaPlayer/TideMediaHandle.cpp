@@ -187,14 +187,14 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
     if (ret < 0 || !swr_ctx) {
         qDebug() << "Failed to allocate SwrContext\n";
         av_channel_layout_uninit(&in_channel_layout);
-        return false;
+        return NULL;
     }
 
     if ((ret = swr_init(swr_ctx)) < 0) {
         qDebug() << "Failed to initialize SwrContext\n";
         swr_free(&swr_ctx);
         av_channel_layout_uninit(&in_channel_layout);
-        return false;
+        return NULL;
     }
 
     int64_t target_pts = startTime * (AV_TIME_BASE / 1000);
@@ -292,7 +292,11 @@ void TideMediaHandle::setCacheAudioNULL() {
     cacheAudio = nullptr;
 }
 
-int64_t TideMediaHandle::getBitrate()
+QAudioFormat TideMediaHandle::getAudioInfo()
 {
-    return codec_ctx->bit_rate;
+    QAudioFormat format;
+    format.setSampleRate(codec_ctx->sample_rate);
+    format.setChannelCount(codec_ctx->ch_layout.nb_channels);
+    format.setSampleType(codec_ctx->sample_fmt);
+    return format;
 }
