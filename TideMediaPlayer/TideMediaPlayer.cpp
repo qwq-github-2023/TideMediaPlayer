@@ -85,9 +85,9 @@ void TideMediaPlayer::refreshAudio(bool reload)
     QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong());
 
     QAudioFormat format = mediaHandle->getAudioInfo();
-    format.setSampleRate(44100);                      // 采样率
-    format.setChannelCount(2);                        // 通道数，2表示立体声
-    format.setSampleFormat(QAudioFormat::Int16);      // 样本格式（等同于16位有符号整型PCM）
+    //format.setSampleRate(44100);                      // 采样率
+    //format.setChannelCount(2);                        // 通道数，2表示立体声
+    //format.setSampleFormat(QAudioFormat::Int16);      // 样本格式（等同于16位有符号整型PCM）
     
     // 检查音频设备支持情况
     QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
