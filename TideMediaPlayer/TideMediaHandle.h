@@ -4,9 +4,8 @@
 #include <QString>
 #include <QFile>
 #include <QMessageBox>
-#include <QSqlDatabase>
-#include <qsqlquery.h>
 #include <qbuffer.h>
+#include <QAudioFormat>
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -50,7 +49,7 @@ public:
 	QBuffer* decodeAudioToQBuffer(uint64_t start_time, uint64_t preDecodingSec, bool isCache = false);
 	QBuffer* getPCMAudio(uint64_t start_time, uint64_t preDecodingSec);
 	void setCacheAudioNULL();
-	int64_t getBitrate();
+	QAudioFormat getAudioInfo();
 	
 private:
 	int mediaType = TMH_UNKNOWN;
