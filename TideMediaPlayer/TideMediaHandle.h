@@ -30,12 +30,37 @@ extern "C" {
 
 class TideMediaHandle : public QFile
 {
+	Q_OBJECT;
 public:
-	using QFile::QFile;
-	TideMediaHandle();
+	//using QFile::QFile;
+	TideMediaHandle()
+		: QFile() {
+	}
+
+	explicit TideMediaHandle(QObject* parent)
+		: QFile(parent) {
+	}
+
+	explicit TideMediaHandle(const QString& name)
+		: QFile(name) {
+	}
+
+	explicit TideMediaHandle(const std::filesystem::path& name)
+		: QFile(name) {
+	}
+
+	TideMediaHandle(const QString& name, QObject* parent)
+		: QFile(name, parent) {
+	}
+
+	TideMediaHandle(const std::filesystem::path& name, QObject* parent)
+		: QFile(name, parent) {
+	}
+	
+
 	~TideMediaHandle();
 
-	static void sqlInit();
+	//static void sqlInit();
 	static void init();
 
 	bool loadMedia();

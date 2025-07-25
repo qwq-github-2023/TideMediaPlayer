@@ -32,9 +32,6 @@ namespace Tide
     }
 }
 
-TideMediaHandle::TideMediaHandle()
-{
-}
 
 TideMediaHandle::~TideMediaHandle()
 {
