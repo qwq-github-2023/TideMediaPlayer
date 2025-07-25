@@ -12,6 +12,9 @@ namespace Tide
     static int read_packet(void* opaque, uint8_t* buf, int buf_size) {
         QFile* file = reinterpret_cast<QFile*>(opaque);
         int ret = file->read(reinterpret_cast<char*>(buf), buf_size);
+        if (!(ret > 0)) {
+            qDebug() << "Read error:" << file->errorString();
+        }
         if (ret == 0) return AVERROR_EOF;
         if (ret < 0) return -1;
         return ret;
@@ -58,6 +61,10 @@ void TideMediaHandle::init() {
 
 bool TideMediaHandle::loadAudio()
 {
+    if (!open(QIODevice::ReadOnly)) {
+        qDebug() << "Failed to open file:" << errorString();
+        return false;
+    }
     //QFileInfo fileInfo(*this);
 
     //QDateTime modified = fileInfo.lastModified();
@@ -87,10 +94,10 @@ bool TideMediaHandle::loadAudio()
     // 创建AVIOContext，以QFile* audioFile (即this) 为参数
     AVIOContext* avioCtx = avio_alloc_context(buffer, bufferSize, 0, audioFile, Tide::read_packet, nullptr, Tide::seek);
 
-    AVFormatContext* fmtCtx = avformat_alloc_context();
-    fmtCtx->pb = avioCtx;
+    formatContext = avformat_alloc_context();
+    formatContext->pb = avioCtx;
 
-    if (avformat_open_input(&fmtCtx, nullptr, nullptr, nullptr) < 0) {
+    if (avformat_open_input(&formatContext, nullptr, nullptr, nullptr) < 0) {
         qDebug() << "Could not open input.";
         return false;
     }
@@ -129,6 +136,7 @@ bool TideMediaHandle::loadMedia()
     qDebug() << type.name();
     if (type.name().startsWith("audio/")) {
         mediaType = TMH_AUDIO;
+        loadAudio();
     } else if (type.name().startsWith("image/"))  {
         mediaType = TMH_IMAGE;
     } else if (type.name().startsWith("video/"))  {
