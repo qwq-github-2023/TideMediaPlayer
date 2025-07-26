@@ -84,21 +84,29 @@ void TideMediaPlayer::refreshAudio(bool reload)
     mediaHandle->setCacheAudioNULL();
     QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
     audioBuffer->open(QIODevice::ReadOnly);
+    QFile file("output.pcm");
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(audioBuffer->data());
+        file.close();
+        qDebug() << "写入完成";
+    }
+    qDebug() << "Data size: " << audioBuffer->buffer().size();
+
     QAudioFormat format = mediaHandle->getAudioInfo();
-    //format.setSampleRate(44100);                      // 采样率
-    //format.setChannelCount(2);                        // 通道数，2表示立体声
-    //format.setSampleFormat(QAudioFormat::Int16);      // 样本格式（等同于16位有符号整型PCM）
-    
-    // 检查音频设备支持情况
+    qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
+        format.sampleRate(), format.channelCount(), format.sampleFormat()
+    );
+
     QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
     if (!outputDevice.isFormatSupported(format)) {
         qWarning() << "默认设备不支持此格式，使用最接近格式替代";
         format = outputDevice.preferredFormat();
-        // QMessageBox::critical(nullptr, "错误", "您似乎没有正确的播放设备");
-        // delete audioBuffer;
-        // return;
     }
-    
+
+    qDebug("sampleRate: %d, channelCount: %d, sampleFormat: %d",
+        format.sampleRate(), format.channelCount(), format.sampleFormat()
+    );
+
     QAudioSink audioSink(outputDevice, format);
     audioSink.start(audioBuffer);
 
