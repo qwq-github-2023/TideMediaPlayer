@@ -28,7 +28,26 @@ namespace Tide
             return file->size();
         }
 
-        if (!file->seek(offset)) {
+        switch (whence) {
+        case SEEK_SET:
+            if (!file->seek(offset))
+                return -1;
+            return file->pos();
+
+        case SEEK_CUR:
+            if (!file->seek(file->pos() + offset))
+                return -1;
+            return file->pos();
+
+        case SEEK_END:
+            if (!file->seek(file->size() + offset))
+                return -1;
+            return file->pos();
+
+        case AVSEEK_SIZE:
+            return file->size();
+
+        default:
             return -1;
         }
         return file->pos();
@@ -165,6 +184,7 @@ QPixmap TideMediaHandle::getImagePixmap()
     return pixmap;
 }
 
+
 QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preDecodingSec, bool isCache) {
     this->reset();
     AVChannelLayout out_channel_layout = AV_CHANNEL_LAYOUT_STEREO;
@@ -199,7 +219,8 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
     }
 
     int64_t target_pts = startTime; // * (AV_TIME_BASE / 1000);
-    if (av_seek_frame(formatContext, -1, target_pts, AVSEEK_FLAG_BACKWARD) < 0) {
+    int audio_index = av_find_best_stream(formatContext, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
+    if (av_seek_frame(formatContext, audio_index, target_pts, AVSEEK_FLAG_BACKWARD) < 0) {
         fprintf(stderr, "Failed to seek.\n");
     }
     avcodec_flush_buffers(codec_ctx);
@@ -214,20 +235,23 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
     while (decoding && av_read_frame(formatContext, pkt) >= 0) {
         if (pkt->stream_index == audioIndex) {
             if (avcodec_send_packet(codec_ctx, pkt) == 0) {
+                uint8_t* out_data[1] = { nullptr };
                 while (avcodec_receive_frame(codec_ctx, frame) == 0) {
                     // 计算当前帧的时长
                     double frame_duration = (double)frame->nb_samples / codec_ctx->sample_rate;
 
                     // 转换音频为S16 PCM格式
-                    uint8_t* out_data[1] = { nullptr };
                     int out_samples = swr_get_out_samples(swr_ctx, frame->nb_samples);
-                    int out_buffer_size = av_samples_alloc(out_data, nullptr, 2, out_samples, AV_SAMPLE_FMT_S16, 0);
-
-                    int converted = swr_convert(swr_ctx, out_data, out_samples,
+                    if (av_samples_alloc(&out_data[0], nullptr, codec_ctx->ch_layout.nb_channels, out_samples, AV_SAMPLE_FMT_S16, 0) < 1) {
+                        qDebug() << "Failed to allocate output buffer for audio conversion.";
+                        return nullptr;
+                    }
+                    int converted = swr_convert(swr_ctx, &out_data[0], out_samples,
                         (const uint8_t**)frame->data, frame->nb_samples);
-                    
+                    int bufferSize = av_samples_get_buffer_size(nullptr, codec_ctx->ch_layout.nb_channels, converted, AV_SAMPLE_FMT_S16, 1);
                     // fwrite(out_data[0], 1, converted * codec_ctx->channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16), pcm_file);
-                    pcmBuffer->write(reinterpret_cast<const char*>(&out_data[0]), converted * codec_ctx->ch_layout.nb_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16));
+                    // pcmBuffer->write(reinterpret_cast<const char*>(out_data[0]), converted * codec_ctx->ch_layout.nb_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16));
+                    pcmBuffer->write(reinterpret_cast<const char*>(out_data[0]), bufferSize);
                     av_freep(&out_data[0]);
                     decoded_duration += frame_duration;
 
@@ -235,37 +259,23 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
                         decoding = false;
                         break;
                     }
+                    out_data[0] = nullptr ;
                 }
+                
             }
+            av_packet_unref(pkt);
         }
-        av_packet_unref(pkt);
+
+        pcmBuffer->close();
+        av_frame_free(&frame);
+        av_packet_free(&pkt);
+        swr_free(&swr_ctx);
+        av_channel_layout_uninit(&in_channel_layout);
+        if (isCache) {
+            cacheAudio = pcmBuffer;
+        }
+        return pcmBuffer;
     }
-
-    pcmBuffer->close();
-    av_frame_free(&frame);
-    av_packet_free(&pkt);
-    swr_free(&swr_ctx);
-    av_channel_layout_uninit(&in_channel_layout);
-    if (isCache) {
-        cacheAudio = pcmBuffer;
-    }
-    return pcmBuffer;
-
- //   QFileInfo fileInfo(*this);
- //   QDateTime modified = fileInfo.lastModified();
- //   QString comm = QString("INSERT INTO %1 (startTime, durationTime, data) VALUES (:startTime, :durationTime, :data)").arg(modified.toString());
- //   QSqlQuery query;
- //   query.prepare(comm);
- //   query.bindValue(":startTime", startTime);
- //   query.bindValue(":durationTime", preDecodingSec);
- //   query.bindValue(":data", pcmBuffer.readAll());
-
- //   if (!query.exec()) {
- //       qDebug() << "Failed to insert data: " << query.lastError().text();
- //       Tide::db.rollback();
- //       return false;
-	//}
-	//Tide::db.commit();
 }
 
 QBuffer* TideMediaHandle::getPCMAudio(uint64_t startTime, uint64_t preDecodingSec)
@@ -283,10 +293,10 @@ QBuffer* TideMediaHandle::getPCMAudio(uint64_t startTime, uint64_t preDecodingSe
     }
     else {
         if (startTime + 2 * preDecodingSec > formatContext->duration) {
-            // std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, formatContext->duration - startTime - preDecodingSec, true).detach();
+            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, formatContext->duration - startTime - preDecodingSec, true).detach();
         }
         else {
-            // std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, preDecodingSec, true).detach();
+            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, preDecodingSec, true).detach();
         }
     }
     return t ? t : decodeAudioToQBuffer(startTime, preDecodingSec);
