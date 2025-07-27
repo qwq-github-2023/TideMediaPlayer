@@ -88,6 +88,11 @@ void ImageButton::setStatus(int status) {
     return;
 }
 
+bool ImageButton::getStatus()
+{
+    return isPlaying;
+}
+
 //按钮释放事件
 void ImageButton::mouseReleaseEvent(QMouseEvent* event)
 {

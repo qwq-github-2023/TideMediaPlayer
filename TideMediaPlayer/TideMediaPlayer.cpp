@@ -31,10 +31,26 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
     ui.openGLWidgetStage->setTideMediaPlayer(this);
     Config::init();
 
-    connect(audioSink, &QAudioSink::stateChanged, this, [](QAudio::State state) {
-        qDebug() << "Audio State:" << state;
+    connect(audioSink, &QAudioSink::stateChanged, this, [this](QAudio::State state) {
+        if (ui.pushButtonPlay->getStatus() && 
+            audioSink->state() == QtAudio::StoppedState && 
+            mediaHandle->getMediaType() == TMH_AUDIO) {
+            // 音频播放结束，重置音频缓冲区
+            if (audioBuffer)  delete audioBuffer;
+            if (audioBufferCache) {
+                audioBuffer = audioBufferCache;
+            }
+            audioBuffer->open(QIODevice::ReadOnly);
+            audioSink->start(audioBuffer);
+            audioBufferCache = mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000);
+        }
         });
     audioSink->setVolume(1.0);
+
+    
+    connect(&stageSliderTimer, &QTimer::timeout, this, &TideMediaPlayer::stageClockGoing);
+    stageSliderTimer.setSingleShot(false);
+    stageSliderTimer.start(10);
 }  
 
 TideMediaPlayer::~TideMediaPlayer()  
@@ -88,11 +104,6 @@ void TideMediaPlayer::refreshAudio(bool reload)
 {
     if (reload) {
         if (audioSink) delete audioSink;
-        if (audioBuffer) delete audioBuffer;
-        mediaHandle->setCacheAudioNULL();
-        audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
-        audioBuffer->open(QIODevice::ReadOnly);
-
         QAudioFormat format = mediaHandle->getAudioInfo();
         qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
             format.sampleRate(), format.channelCount(), format.sampleFormat()
@@ -100,13 +111,16 @@ void TideMediaPlayer::refreshAudio(bool reload)
 
         QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
         audioSink = new QAudioSink(outputDevice, format);
+        ui.horizontalSlider->setValue(0);
     }
-    else {
-        audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
-        audioBuffer->open(QIODevice::ReadOnly);
-    }
-    
-    
+
+    if (audioBuffer) delete audioBuffer;
+    if (audioBufferCache) delete audioBufferCache;
+    mediaHandle->setPlayTimestamp(ui.horizontalSlider->value());
+    audioBuffer = mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000);
+    audioBufferCache = mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000);
+    audioBuffer->open(QIODevice::ReadOnly);
+
     
     audioSink->start(audioBuffer);
     
@@ -146,7 +160,7 @@ void TideMediaPlayer::openFile()
             QMessageBox::critical(nullptr, "错误", "未知的文件类型！");  
             return;
         }  
-        refreshStage();
+        refreshStage(true);
     }  
     else {  
         QMessageBox::critical(nullptr, "错误", "文件不存在或无法打开！");  
@@ -177,4 +191,16 @@ void TideMediaPlayer::resizeEvent(QResizeEvent* event) {
 }
 void TideMediaPlayer::sliderValueChanged(int value)
 {
+    if (mediaHandle->getMediaType() == TMH_AUDIO) {
+        refreshAudio(false);
+    }
+}
+void TideMediaPlayer::stageClockGoing()
+{
+    if (ui.pushButtonPlay->getStatus()) {
+        ui.horizontalSlider->setValue(ui.horizontalSlider->value() + 10 * 1000);
+    }
+    else {
+        audioSink->stop();
+    }
 }

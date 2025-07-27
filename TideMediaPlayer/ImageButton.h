@@ -16,6 +16,7 @@ public:
     explicit ImageButton(QWidget* parent = nullptr);
     // 设置状态
     void setStatus(int status); // 0 Disable 1 Enable-Playing 2 Enable-Stopping
+    bool getStatus(); // Playing?
     //按钮的事件处理函数
 protected:
     //鼠标进入事件

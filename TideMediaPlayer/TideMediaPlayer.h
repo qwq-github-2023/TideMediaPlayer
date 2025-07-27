@@ -16,7 +16,7 @@ public:
 
     TideMediaPlayer(QWidget *parent = nullptr);
     ~TideMediaPlayer();
-    void refreshStage(bool reload = true);
+    void refreshStage(bool reload);
     void showScaleLabel(qreal scaleFactor);
 public slots:
     void openFile();
@@ -32,11 +32,14 @@ private:
     
     QPixmap oriImagePixmap;
     QTimer labelScaleTimer;
-
+    
     QAudioSink* audioSink;
     QBuffer* audioBuffer;
-
-    void refreshImage(bool reload = true);
-    void refreshVideo(bool reload = true);
-    void refreshAudio(bool reload = true);
+    QBuffer* audioBufferCache;
+    QTimer stageSliderTimer;
+    bool isAudioPlaying;
+    void refreshImage(bool reload);
+    void refreshVideo(bool reload);
+    void refreshAudio(bool reload);
+    void stageClockGoing();
 };
