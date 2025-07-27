@@ -36,6 +36,7 @@ public slots:
     void mouseMoveEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void sliderUserValueChanged();
+    void volumeValueChanged(int value);
 private:
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;

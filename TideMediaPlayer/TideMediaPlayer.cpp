@@ -95,19 +95,20 @@ void TideMediaPlayer::refreshVideo(bool reload)
 void TideMediaPlayer::refreshAudio(bool reload)
 {
     if (mediaHandle->getMediaType() != TMH_AUDIO) return;
-    ui.horizontalSlider->setRange(0, mediaHandle->getDuration() / 1000);
+    if (audioSink) audioSink->stop();
     if (reload) {
-        if (audioSink) delete audioSink;
+        
         QAudioFormat format = mediaHandle->getAudioInfo();
         qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
             format.sampleRate(), format.channelCount(), format.sampleFormat()
         );
 
         QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
+        if (audioSink) delete audioSink;
         audioSink = new QAudioSink(outputDevice, format);
+        ui.horizontalSlider->setRange(0, mediaHandle->getDuration() / 1000);
         ui.horizontalSlider->setValue(0);
     }
-
     if (audioBuffer) delete audioBuffer;
     if (audioBufferCache) delete audioBufferCache;
     mediaHandle->setPlayTimestamp(ui.horizontalSlider->value() * 1000);
@@ -118,9 +119,15 @@ void TideMediaPlayer::refreshAudio(bool reload)
     ui.widgetController->setEnabled(true);
     ui.pushButtonPlay->setStatus(1);
 
-    audioSink->setVolume(1.0);
+    audioSink->setVolume(ui.sliderVolume->value() / 100.0);
     qDebug() << "Data size: " << audioBuffer->buffer().size();
     audioSink->start(audioBuffer);
+    if (audioSink->state() == QtAudio::IdleState) {
+        QMessageBox::critical(nullptr, "错误", "这似乎不是一个正确的音频文件！");
+        ui.widgetController->setEnabled(false);
+        ui.pushButtonPlay->setStatus(0);
+        return;
+    }
     return;
 }
 
@@ -176,7 +183,6 @@ void TideMediaPlayer::sliderUserValueChanged()
         refreshAudio(false);
     }
 }
-
 QString formatMillisecondsToTime(qint64 milliseconds) {
     qint64 totalSeconds = milliseconds / 1000;
     qint64 hours = totalSeconds / 3600;
@@ -191,11 +197,19 @@ QString formatMillisecondsToTime(qint64 milliseconds) {
 void TideMediaPlayer::stageClockGoing()
 {
     if (ui.pushButtonPlay->getStatus()) {
-        if (audioSink->state() == QtAudio::IdleState) audioSink->resume();
+        if (audioSink && audioSink->state() == QtAudio::SuspendedState) audioSink->resume();
         ui.horizontalSlider->setValue(ui.horizontalSlider->value() + 10);
         ui.labelMediaStatus->setText(formatMillisecondsToTime(ui.horizontalSlider->value()) + " / " + formatMillisecondsToTime(ui.horizontalSlider->maximum()));
     }
     else {
-         if (audioSink) audioSink->suspend();
+        if (audioSink && audioSink->state() == QtAudio::ActiveState) audioSink->suspend();
     }
+}
+void TideMediaPlayer::volumeValueChanged(int value)
+{
+    qreal linearVolume = QtAudio::convertVolume(value / qreal(100.0),
+        QtAudio::LogarithmicVolumeScale,
+        QtAudio::LinearVolumeScale);
+    audioSink->setVolume(linearVolume);
+    ui.volumeLabel->setText(QString("音量: %1%2").arg(value).arg("%"));
 }

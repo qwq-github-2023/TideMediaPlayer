@@ -218,6 +218,87 @@
       </widget>
      </item>
      <item>
+      <widget class="Line" name="line">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="sizeIncrement">
+        <size>
+         <width>0</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Orientation::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="volumeLabel">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>63</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>63</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>音量: 100%</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QSlider" name="sliderVolume">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>80</width>
+         <height>40</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>40</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="maximum">
+        <number>100</number>
+       </property>
+       <property name="value">
+        <number>100</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QDoubleSpinBox" name="doubleSpinBoxTripleSpeed">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -932,6 +1013,22 @@ QMenuBar::item {
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>sliderVolume</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>TideMediaPlayer</receiver>
+   <slot>volumeValueChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>791</x>
+     <y>541</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>789</x>
+     <y>597</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>openFile()</slot>
@@ -939,5 +1036,6 @@ QMenuBar::item {
   <slot>resetScale()</slot>
   <slot>showSetting()</slot>
   <slot>sliderUserValueChanged()</slot>
+  <slot>volumeValueChanged(int)</slot>
  </slots>
 </ui>

@@ -100,7 +100,7 @@ void ImageButton::mouseReleaseEvent(QMouseEvent* event)
     //如果鼠标左键释放
     if (event->button() == Qt::LeftButton)
     {
-        if (isPlaying) {
+        if (!isPlaying) {
             imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Pause.svg";
             imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
             imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
