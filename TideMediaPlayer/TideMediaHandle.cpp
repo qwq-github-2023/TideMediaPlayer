@@ -317,6 +317,8 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
     av_packet_free(&pkt);
     swr_free(&swr_ctx);
     av_channel_layout_uninit(&in_channel_layout);
+    av_channel_layout_uninit(&out_channel_layout);
+	av_free(buf);
     return pcmBuffer;
 }
 
