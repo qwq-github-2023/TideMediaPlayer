@@ -362,10 +362,13 @@ QAudioFormat TideMediaHandle::getAudioInfo()
 }
 
 bool TideMediaHandle::setPlayTimestamp(uint64_t timestamp) {
-    if (av_seek_frame(formatContext, audioIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
+    AVRational tb = formatContext->streams[audioIndex]->time_base;
+    int64_t ts = av_rescale_q(timestamp, AV_TIME_BASE_Q, tb);
+    if (av_seek_frame(formatContext, audioIndex, ts, AVSEEK_FLAG_ANY) < 0) {
         qDebug() << stderr << "Failed to seek.";
         return false;
     }
+    avcodec_flush_buffers(codec_ctx);
     return true;
 }
 
