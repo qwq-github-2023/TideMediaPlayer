@@ -391,3 +391,8 @@ bool TideMediaHandle::setPlayTimestamp(uint64_t timestamp) {
     }
     return true;
 }
+
+int64_t TideMediaHandle::getDuration()
+{
+	return formatContext ? formatContext->duration : 0;
+}

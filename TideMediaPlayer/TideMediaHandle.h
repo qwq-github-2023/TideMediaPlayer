@@ -71,6 +71,7 @@ public:
 	//void setCacheAudioNULL();
 	QAudioFormat getAudioInfo();
 	bool setPlayTimestamp(uint64_t timestamp);
+	int64_t getDuration();
 	
 private:
 	int mediaType = TMH_UNKNOWN;
