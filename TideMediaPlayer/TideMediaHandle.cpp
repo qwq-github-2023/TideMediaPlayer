@@ -4,7 +4,6 @@
 #include <QFileInfo>
 #include <QDateTime>
 #include <vector>
-#include <QSqlError>
 #include <qbuffer.h>
 #include <qmutex.h>
 
