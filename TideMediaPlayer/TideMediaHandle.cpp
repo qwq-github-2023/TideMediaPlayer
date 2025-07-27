@@ -295,7 +295,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
 					int converted = swr_convert(swr_ctx, &buf, out_samples, (const uint8_t**)frame->extended_data, frame->nb_samples);
                     int bufferSize = av_samples_get_buffer_size(nullptr, codec_ctx->ch_layout.nb_channels, converted, AV_SAMPLE_FMT_S16, 1);
                     if (converted == 0 || bufferSize == 0) continue;
-					qDebug() << "bufferSize:" << bufferSize;
+					// qDebug() << "bufferSize:" << bufferSize;
                     // fwrite(out_data[0], 1, converted * codec_ctx->channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16), pcm_file);
                     // pcmBuffer->write(reinterpret_cast<const char*>(out_data[0]), converted * codec_ctx->ch_layout.nb_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16));
                     pcmBuffer->write(reinterpret_cast<const char*>(buf), bufferSize);
@@ -357,30 +357,7 @@ QAudioFormat TideMediaHandle::getAudioInfo()
     QAudioFormat format;
     format.setSampleRate(codec_ctx->sample_rate);
     format.setChannelCount(codec_ctx->ch_layout.nb_channels);
-    QAudioFormat::SampleFormat sampleFormat;
-    int sampleSize = 0;
-    switch (codec_ctx->sample_fmt) {
-    case AV_SAMPLE_FMT_U8:
-    case AV_SAMPLE_FMT_U8P:
-        sampleFormat = QAudioFormat::UInt8;
-        break;
-    case AV_SAMPLE_FMT_S16:
-    case AV_SAMPLE_FMT_S16P:
-        sampleFormat = QAudioFormat::Int16;
-        break;
-    case AV_SAMPLE_FMT_S32:
-    case AV_SAMPLE_FMT_S32P:
-        sampleFormat = QAudioFormat::Int32;
-        break;
-    case AV_SAMPLE_FMT_FLT:
-    case AV_SAMPLE_FMT_FLTP:
-        sampleFormat = QAudioFormat::Float;
-        break;
-    default:
-        sampleFormat = QAudioFormat::Unknown;
-        break;
-    }
-    format.setSampleFormat(sampleFormat);
+    format.setSampleFormat(QAudioFormat::Int16);
     return format;
 }
 

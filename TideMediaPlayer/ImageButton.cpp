@@ -73,17 +73,18 @@ void ImageButton::setStatus(int status) {
         imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Pause.svg";
         imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
         imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
-        isPlaying = false;
+        isPlaying = true;
     }
     else if (status == 2) {
         imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Play.svg";
         imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PlayHover.svg";
         imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PlayHover.svg";
-        isPlaying = true;
+        isPlaying = false;
     } else {
         imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
         imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
         imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
+        isPlaying = false;
     }
     return;
 }
@@ -103,18 +104,19 @@ void ImageButton::mouseReleaseEvent(QMouseEvent* event)
             imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Pause.svg";
             imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
             imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
-            isPlaying = false;
+            isPlaying = true;
         }
         else {
             imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Play.svg";
             imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PlayHover.svg";
             imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PlayHover.svg";
-            isPlaying = true;
+            isPlaying = false;
         }
         if (!parentWidget()->isEnabled()) {
             imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
             imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
             imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
+            isPlaying = false;
         }
         if (curStatus_ != ST_INIT)
         {

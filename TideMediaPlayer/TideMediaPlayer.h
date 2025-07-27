@@ -7,6 +7,14 @@
 #include <QTimer>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QAudioSink>
+#include <QFileDialog>
+#include <QMessageBox>  
+#include <QPropertyAnimation>
+#include <QAudioOutput>
+#include <QAudioFormat>
+#include <QMediaDevices>
+#include <QSettings>
 
 class TideMediaPlayer : public QMainWindow
 {
@@ -16,7 +24,9 @@ public:
 
     TideMediaPlayer(QWidget *parent = nullptr);
     ~TideMediaPlayer();
-    void refreshStage(bool reload);
+    void refreshImage(bool reload);
+    void refreshVideo(bool reload);
+    void refreshAudio(bool reload);
     void showScaleLabel(qreal scaleFactor);
 public slots:
     void openFile();
@@ -25,21 +35,19 @@ public slots:
     void resetScale();
     void mouseMoveEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
-    void sliderValueChanged(int value);
+    void sliderUserValueChanged();
 private:
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;
     
     QPixmap oriImagePixmap;
     QTimer labelScaleTimer;
-    
+    QTimer stageSliderTimer;
+
     QAudioSink* audioSink;
     QBuffer* audioBuffer;
     QBuffer* audioBufferCache;
-    QTimer stageSliderTimer;
     bool isAudioPlaying;
-    void refreshImage(bool reload);
-    void refreshVideo(bool reload);
-    void refreshAudio(bool reload);
+
     void stageClockGoing();
 };
