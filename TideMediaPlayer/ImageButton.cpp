@@ -66,6 +66,28 @@ void ImageButton::mousePressEvent(QMouseEvent* event)
 
 }
 
+
+// 设置状态
+void ImageButton::setStatus(int status) {
+    if (status == 1) {
+        imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Pause.svg";
+        imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
+        imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PauseHover.svg";
+        isPlaying = false;
+    }
+    else if (status == 2) {
+        imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Play.svg";
+        imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-PlayHover.svg";
+        imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-PlayHover.svg";
+        isPlaying = true;
+    } else {
+        imageName_[ST_NORMAL] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
+        imageName_[ST_HOVER] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
+        imageName_[ST_PRESS] = ":/PlayButton/Icons/PlayBtn-Disable.svg";
+    }
+    return;
+}
+
 //按钮释放事件
 void ImageButton::mouseReleaseEvent(QMouseEvent* event)
 {

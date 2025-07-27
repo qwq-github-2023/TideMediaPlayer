@@ -30,6 +30,11 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
     
     ui.openGLWidgetStage->setTideMediaPlayer(this);
     Config::init();
+
+    connect(audioSink, &QAudioSink::stateChanged, this, [](QAudio::State state) {
+        qDebug() << "Audio State:" << state;
+        });
+    audioSink->setVolume(1.0);
 }  
 
 TideMediaPlayer::~TideMediaPlayer()  
@@ -81,24 +86,32 @@ void TideMediaPlayer::refreshVideo(bool reload)
 }
 void TideMediaPlayer::refreshAudio(bool reload)
 {
-    mediaHandle->setCacheAudioNULL();
-    QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
-    audioBuffer->open(QIODevice::ReadOnly);
+    if (reload) {
+        if (audioSink) delete audioSink;
+        if (audioBuffer) delete audioBuffer;
+        mediaHandle->setCacheAudioNULL();
+        audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
+        audioBuffer->open(QIODevice::ReadOnly);
 
-    QAudioFormat format = mediaHandle->getAudioInfo();
-    qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
-        format.sampleRate(), format.channelCount(), format.sampleFormat()
-    );
+        QAudioFormat format = mediaHandle->getAudioInfo();
+        qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
+            format.sampleRate(), format.channelCount(), format.sampleFormat()
+        );
 
-    QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
-    QAudioSink* audioSink = new QAudioSink(outputDevice, format);
-    connect(audioSink, &QAudioSink::stateChanged, this, [](QAudio::State state) {
-        qDebug() << "Audio State:" << state;
-        });
-    audioSink->setVolume(1.0);
+        QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
+        audioSink = new QAudioSink(outputDevice, format);
+    }
+    else {
+        audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
+        audioBuffer->open(QIODevice::ReadOnly);
+    }
+    
+    
+    
     audioSink->start(audioBuffer);
-
+    
     ui.widgetController->setEnabled(true);
+    ui.pushButtonPlay->setStatus(1);
     return;
 }
 void TideMediaPlayer::refreshStage(bool reload)  
@@ -161,4 +174,7 @@ void TideMediaPlayer::resizeEvent(QResizeEvent* event) {
     ui.labelScale->move((width() - ui.labelScale->width()) / 2, (height() - ui.labelScale->height()) / 2 - 26);
     refreshStage(false);
     QMainWindow::resizeEvent(event);
+}
+void TideMediaPlayer::sliderValueChanged(int value)
+{
 }

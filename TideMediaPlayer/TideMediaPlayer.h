@@ -25,13 +25,16 @@ public slots:
     void resetScale();
     void mouseMoveEvent(QMouseEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
-    
+    void sliderValueChanged(int value);
 private:
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;
     
     QPixmap oriImagePixmap;
     QTimer labelScaleTimer;
+
+    QAudioSink* audioSink;
+    QBuffer* audioBuffer;
 
     void refreshImage(bool reload = true);
     void refreshVideo(bool reload = true);

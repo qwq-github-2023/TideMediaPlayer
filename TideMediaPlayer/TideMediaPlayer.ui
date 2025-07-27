@@ -209,6 +209,9 @@
          <height>40</height>
         </size>
        </property>
+       <property name="tracking">
+        <bool>false</bool>
+       </property>
        <property name="orientation">
         <enum>Qt::Orientation::Horizontal</enum>
        </property>
@@ -771,7 +774,7 @@
      <x>0</x>
      <y>0</y>
      <width>960</width>
-     <height>27</height>
+     <height>26</height>
     </rect>
    </property>
    <property name="mouseTracking">
@@ -913,11 +916,28 @@ QMenuBar::item {
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>horizontalSlider</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>TideMediaPlayer</receiver>
+   <slot>sliderValueChanged(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>317</x>
+     <y>547</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>312</x>
+     <y>680</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>openFile()</slot>
   <slot>showAboutDialog()</slot>
   <slot>resetScale()</slot>
   <slot>showSetting()</slot>
+  <slot>sliderValueChanged(int)</slot>
  </slots>
 </ui>
