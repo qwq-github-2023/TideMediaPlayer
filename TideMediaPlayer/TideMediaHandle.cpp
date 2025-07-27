@@ -6,6 +6,7 @@
 #include <vector>
 #include <QSqlError>
 #include <qbuffer.h>
+#include <qmutex.h>
 
 extern "C" void qt_ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list vl) {
     if (level > av_log_get_level())
@@ -31,11 +32,11 @@ namespace Tide
     static int read_packet(void* opaque, uint8_t* buf, int buf_size) {
         QFile* file = reinterpret_cast<QFile*>(opaque);
         int ret = file->read(reinterpret_cast<char*>(buf), buf_size);
-        if (!(ret > 0)) {
-            qDebug() << "Read error:" << file->errorString();
-        }
         if (ret == 0) return AVERROR_EOF;
-        if (ret < 0) return -1;
+        if (ret < 0) {
+            auto err = file->error();
+            qDebug() << "Read error:" << file->errorString() << "QFile error enum" << static_cast<int>(err);
+        }
         return ret;
     }
 
@@ -49,24 +50,31 @@ namespace Tide
 
         switch (whence) {
         case SEEK_SET:
-            if (!file->seek(offset))
+            if (!file->seek(offset)) {
+                qDebug() << "SEEK_SET error";
                 return -1;
+            }
             return file->pos();
 
         case SEEK_CUR:
-            if (!file->seek(file->pos() + offset))
+            if (!file->seek(file->pos() + offset)) {
+                qDebug() << "SEEK_CUR error";
                 return -1;
+            }
             return file->pos();
 
         case SEEK_END:
-            if (!file->seek(file->size() + offset))
+            if (!file->seek(file->size() + offset)) {
+                qDebug() << "SEEK_END error";
                 return -1;
+            }
             return file->pos();
 
         case AVSEEK_SIZE:
             return file->size();
 
         default:
+			qDebug() << "Unsupported seek mode:" << whence;
             return -1;
         }
         return file->pos();
@@ -117,8 +125,8 @@ bool TideMediaHandle::loadAudio()
     //    qDebug() << "Failed to create table: " << query.lastError().text();
     //}
     //Tide::db.commit();
-    av_log_set_level(AV_LOG_DEBUG);
-    av_log_set_callback(qt_ffmpeg_log_callback);
+    //av_log_set_level(AV_LOG_ERROR);
+    //av_log_set_callback(qt_ffmpeg_log_callback);
     QFile* audioFile = this;
     //if (!audioFile || !audioFile->isOpen()) {
     //    qDebug() << "QFile pointer is null or file not opened.";
@@ -144,7 +152,7 @@ bool TideMediaHandle::loadAudio()
         avformat_close_input(&formatContext);
         return false;
     }
-    audioIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
+    audioIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
 
     AVStream* st = formatContext->streams[audioIndex];
     //找到解码器
@@ -162,7 +170,7 @@ bool TideMediaHandle::loadAudio()
     }
     avcodec_parameters_to_context(codec_ctx, st->codecpar);
     avcodec_open2(codec_ctx, codec, nullptr);
-
+    qDebug() << "vedio duration:" << formatContext->duration;
 }
 
 bool TideMediaHandle::loadMedia()
@@ -204,12 +212,11 @@ QPixmap TideMediaHandle::getImagePixmap()
     return pixmap;
 }
 
-
-QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preDecodingSec, bool isCache) {
-    this->reset();
-    AVChannelLayout out_channel_layout = AV_CHANNEL_LAYOUT_STEREO;
+QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
+    //this->reset();
+    AVChannelLayout out_channel_layout;
     AVChannelLayout in_channel_layout;
-
+    av_channel_layout_default(&out_channel_layout, 2);
 
     av_channel_layout_copy(&in_channel_layout, &codec_ctx->ch_layout);
     // 初始化SwrContext
@@ -238,24 +245,40 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
         return nullptr;
     }
 
-    uint64_t target_pts = startTime; // * (AV_TIME_BASE / 1000);
-    int audio_index = av_find_best_stream(formatContext, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-    if (av_seek_frame(formatContext, audio_index, target_pts, AVSEEK_FLAG_BACKWARD) < 0) {
-        qDebug() << stderr << "Failed to seek.";
-    }
+    //uint64_t target_pts = startTime; // * (AV_TIME_BASE / 1000);
+    //if (av_seek_frame(formatContext, audioIndex, target_pts, AVSEEK_FLAG_BACKWARD) < 0) {
+    //    qDebug() << stderr << "Failed to seek.";
+    //}
     avcodec_flush_buffers(codec_ctx);
     QBuffer* pcmBuffer = new QBuffer();
     pcmBuffer->open(QIODevice::WriteOnly);
     AVPacket* pkt = av_packet_alloc();
     AVFrame* frame = av_frame_alloc();
+    uint8_t* buf = (uint8_t*)av_malloc(192000); // 足够大
 
     uint64_t decoded_duration = 0;
     bool decoding = true;
 
-    while (decoding && av_read_frame(formatContext, pkt) >= 0) {
+    int errorTry = 0;
+
+    while (true) {
+		int ret = av_read_frame(formatContext, pkt);
+        if (ret == AVERROR_EOF)
+            break;
+        if (decoding && (ret < 0)) {
+            if (errorTry >= MAXERRORTRY) {
+				qDebug() << "Too many errors, stopping decoding.";
+                break;
+            }
+            else {
+                ++errorTry;
+                continue;
+            }
+			qDebug() << "Error reading frame:" << ret;
+        }
         if (pkt->stream_index == audioIndex) {
             if (avcodec_send_packet(codec_ctx, pkt) == 0) {
-                uint8_t* out_data[1] = { nullptr };
+                // uint8_t* out_data[1] = { nullptr };
                 while (avcodec_receive_frame(codec_ctx, frame) == 0) {
                     // 计算当前帧的时长
                     uint64_t frame_duration = (uint64_t)frame->nb_samples * 1000000 / codec_ctx->sample_rate;
@@ -263,25 +286,27 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
                     // 转换音频为S16 PCM格式
                    int out_samples = swr_get_out_samples(swr_ctx, frame->nb_samples);
                   
-                    if (av_samples_alloc(&out_data[0], nullptr, codec_ctx->ch_layout.nb_channels, out_samples, AV_SAMPLE_FMT_S16, 0) < 1) {
+                    /*if (av_samples_alloc(&out_data[0], nullptr, codec_ctx->ch_layout.nb_channels, out_samples, AV_SAMPLE_FMT_S16, 0) < 1) {
                         qDebug() << "Failed to allocate output buffer for audio conversion.";
                         return nullptr;
-                    }
-                    int converted = swr_convert(swr_ctx, &out_data[0], out_samples,
-                        (const uint8_t**)frame->data, frame->nb_samples);
+                    }*/
+                    /*int converted = swr_convert(swr_ctx, &out_data[0], out_samples,
+                        (const uint8_t**)frame->data, frame->nb_samples);*/
+					int converted = swr_convert(swr_ctx, &buf, out_samples, (const uint8_t**)frame->extended_data, frame->nb_samples);
                     int bufferSize = av_samples_get_buffer_size(nullptr, codec_ctx->ch_layout.nb_channels, converted, AV_SAMPLE_FMT_S16, 1);
+                    if (converted == 0 || bufferSize == 0) continue;
 					qDebug() << "bufferSize:" << bufferSize;
                     // fwrite(out_data[0], 1, converted * codec_ctx->channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16), pcm_file);
                     // pcmBuffer->write(reinterpret_cast<const char*>(out_data[0]), converted * codec_ctx->ch_layout.nb_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16));
-                    pcmBuffer->write(reinterpret_cast<const char*>(out_data[0]), bufferSize);
-                    av_freep(&out_data[0]);
+                    pcmBuffer->write(reinterpret_cast<const char*>(buf), bufferSize);
+                    //av_freep(&out_data[0]);
                     decoded_duration += frame_duration;
 
                     if (decoded_duration >= preDecodingSec/*(preDecodingSec / 1000.0)*/) {
                         decoding = false;
                         break;
                     }
-                    out_data[0] = nullptr ;
+                    //out_data[0] = nullptr ;
                 }
                 
             }
@@ -293,43 +318,39 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t startTime, uint64_t preD
     av_packet_free(&pkt);
     swr_free(&swr_ctx);
     av_channel_layout_uninit(&in_channel_layout);
-    if (isCache) {
-        cacheAudio = pcmBuffer;
-    }
     return pcmBuffer;
 }
 
-QBuffer* TideMediaHandle::getPCMAudio(uint64_t startTime, uint64_t preDecodingSec)
-{
-    startTime *= 1000;
-    preDecodingSec *= 1000;
-    
-    if (startTime > formatContext->duration) {
-		qWarning() << "Start time exceeds media duration.";
-        return nullptr;
-    }
+//QBuffer* TideMediaHandle::getPCMAudio(uint64_t startTime, uint64_t preDecodingSec)
+//{
+//    startTime *= 1000;
+//    preDecodingSec *= 1000;
+//    
+//    if (startTime > formatContext->duration) {
+//		qWarning() << "Start time exceeds media duration.";
+//        return nullptr;
+//    }
+//
+//    if (startTime + preDecodingSec > formatContext->duration) {
+//        preDecodingSec = formatContext->duration - startTime;
+//        cacheAudio = nullptr;
+//    }
+//    else {
+//        if (startTime + 2 * preDecodingSec > formatContext->duration) {
+//            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, formatContext->duration - startTime - preDecodingSec, true).detach();
+//        }
+//        else {
+//            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, preDecodingSec, true).detach();
+//        }
+//    }
+//    return t ? t : decodeAudioToQBuffer(startTime, preDecodingSec);
+//}
 
-    QBuffer* t = cacheAudio;
-    if (startTime + preDecodingSec > formatContext->duration) {
-        preDecodingSec = formatContext->duration - startTime;
-        cacheAudio = nullptr;
-    }
-    else {
-        if (startTime + 2 * preDecodingSec > formatContext->duration) {
-            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, formatContext->duration - startTime - preDecodingSec, true).detach();
-        }
-        else {
-            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, preDecodingSec, true).detach();
-        }
-    }
-    return t ? t : decodeAudioToQBuffer(startTime, preDecodingSec);
-}
-
-void TideMediaHandle::setCacheAudioNULL() {
-	if (cacheAudio) delete cacheAudio;
-    cacheAudio = nullptr;
-    return;
-}
+//void TideMediaHandle::setCacheAudioNULL() {
+//	if (cacheAudio) delete cacheAudio;
+//    cacheAudio = nullptr;
+//    return;
+//}
 
 QAudioFormat TideMediaHandle::getAudioInfo()
 {
@@ -361,4 +382,12 @@ QAudioFormat TideMediaHandle::getAudioInfo()
     }
     format.setSampleFormat(sampleFormat);
     return format;
+}
+
+bool TideMediaHandle::setPlayTimestamp(uint64_t timestamp) {
+    if (av_seek_frame(formatContext, audioIndex, timestamp, AVSEEK_FLAG_BACKWARD) < 0) {
+        qDebug() << stderr << "Failed to seek.";
+        return false;
+    }
+    return true;
 }

@@ -57,7 +57,6 @@ public:
 		: QFile(name, parent) {
 	}
 	
-
 	~TideMediaHandle();
 
 	//static void sqlInit();
@@ -67,16 +66,18 @@ public:
 	bool loadAudio();
 	int getMediaType();
 	QPixmap getImagePixmap();
-	QBuffer* decodeAudioToQBuffer(uint64_t startTime, uint64_t preDecodingSec, bool isCache = false);
-	QBuffer* getPCMAudio(uint64_t startTime, uint64_t preDecodingSec);
-	void setCacheAudioNULL();
+	QBuffer* decodeAudioToQBuffer(uint64_t preDecodingSec);
+	// QBuffer* getPCMAudio(uint64_t startTime, uint64_t preDecodingSec);
+	//void setCacheAudioNULL();
 	QAudioFormat getAudioInfo();
+	bool setPlayTimestamp(uint64_t timestamp);
 	
 private:
 	int mediaType = TMH_UNKNOWN;
 	AVFormatContext* formatContext = nullptr;
 	AVCodecContext* codec_ctx = nullptr;
 	int audioIndex;
-	QBuffer* cacheAudio = nullptr;
+
+	const static int MAXERRORTRY = 10;
 };
 
