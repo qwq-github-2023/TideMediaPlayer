@@ -84,13 +84,6 @@ void TideMediaPlayer::refreshAudio(bool reload)
     mediaHandle->setCacheAudioNULL();
     QBuffer* audioBuffer = mediaHandle->getPCMAudio(0, Config::getValue("preDecodingSec").toULongLong() * 1000);
     audioBuffer->open(QIODevice::ReadOnly);
-    QFile file("output.pcm");
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(audioBuffer->data());
-        file.close();
-        qDebug() << "写入完成";
-    }
-    qDebug() << "Data size: " << audioBuffer->buffer().size();
 
     QAudioFormat format = mediaHandle->getAudioInfo();
     qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
@@ -98,17 +91,12 @@ void TideMediaPlayer::refreshAudio(bool reload)
     );
 
     QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
-    if (!outputDevice.isFormatSupported(format)) {
-        qWarning() << "默认设备不支持此格式，使用最接近格式替代";
-        format = outputDevice.preferredFormat();
-    }
-
-    qDebug("sampleRate: %d, channelCount: %d, sampleFormat: %d",
-        format.sampleRate(), format.channelCount(), format.sampleFormat()
-    );
-
-    QAudioSink audioSink(outputDevice, format);
-    audioSink.start(audioBuffer);
+    QAudioSink* audioSink = new QAudioSink(outputDevice, format);
+    connect(audioSink, &QAudioSink::stateChanged, this, [](QAudio::State state) {
+        qDebug() << "Audio State:" << state;
+        });
+    audioSink->setVolume(1.0);
+    audioSink->start(audioBuffer);
 
     ui.widgetController->setEnabled(true);
     return;
