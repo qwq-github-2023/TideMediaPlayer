@@ -15,7 +15,12 @@
 #include <QAudioFormat>
 #include <QMediaDevices>
 #include <QSettings>
-
+#include <SoundTouch.h>
+#ifdef _DEBUG
+#pragma comment(lib, "SoundTouchDebug.lib")
+#else
+#pragma comment(lib, "SoundTouch.lib")
+#endif
 class TideMediaPlayer : public QMainWindow
 {
     Q_OBJECT
@@ -27,6 +32,7 @@ public:
     void refreshImage(bool reload);
     void refreshVideo(bool reload);
     void refreshAudio(bool reload);
+    
     void showScaleLabel(qreal scaleFactor);
 public slots:
     void openFile();
@@ -37,6 +43,7 @@ public slots:
     void resizeEvent(QResizeEvent* event) override;
     void sliderUserValueChanged();
     void volumeValueChanged(int value);
+    void speedRatioChanged(double);
 private:
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;
@@ -45,10 +52,12 @@ private:
     QTimer labelScaleTimer;
     QTimer stageSliderTimer;
 
+    soundtouch::SoundTouch soundTouch;
     QAudioSink* audioSink;
     QBuffer* audioBuffer;
     QBuffer* audioBufferCache;
     bool isAudioPlaying;
 
     void stageClockGoing();
+    QBuffer* changePlaybackSpeed(QBuffer* inputBuffer, const QAudioFormat& format, float speedRatio);
 };
