@@ -30,16 +30,18 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
             if (audioBufferCache) {
                 audioBuffer = audioBufferCache;
             }
-            audioBuffer->open(QIODevice::ReadOnly);
             qDebug() << "Data size: " << audioBuffer->buffer().size();
             audioSink->start(audioBuffer);
-            audioBufferCache = mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000);
-        }
+            audioBufferCache = changePlaybackSpeed(
+                mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
+                mediaHandle->getAudioInfo(),
+                ui.doubleSpinBoxTripleSpeed->value());
+            }
         });
     
     connect(&stageSliderTimer, &QTimer::timeout, this, &TideMediaPlayer::stageClockGoing);
     stageSliderTimer.setSingleShot(false);
-    stageSliderTimer.setInterval(10);
+    stageSliderTimer.setInterval(100);
     stageSliderTimer.start();
 }  
 
@@ -95,35 +97,128 @@ void TideMediaPlayer::refreshVideo(bool reload)
 void TideMediaPlayer::refreshAudio(bool reload)
 {
     if (mediaHandle->getMediaType() != TMH_AUDIO) return;
-    ui.horizontalSlider->setRange(0, mediaHandle->getDuration() / 1000);
+    if (audioSink) audioSink->stop();
     if (reload) {
-        if (audioSink) delete audioSink;
+        
         QAudioFormat format = mediaHandle->getAudioInfo();
         qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
             format.sampleRate(), format.channelCount(), format.sampleFormat()
         );
 
         QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
+        if (audioSink) delete audioSink;
         audioSink = new QAudioSink(outputDevice, format);
+        ui.horizontalSlider->setRange(0, mediaHandle->getDuration() / 1000);
         ui.horizontalSlider->setValue(0);
     }
-
     if (audioBuffer) delete audioBuffer;
     if (audioBufferCache) delete audioBufferCache;
     mediaHandle->setPlayTimestamp(ui.horizontalSlider->value() * 1000);
-    audioBuffer = mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000);
-    audioBufferCache = mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000);
-    audioBuffer->open(QIODevice::ReadOnly);
+    audioBuffer = changePlaybackSpeed(
+        mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
+        mediaHandle->getAudioInfo(),
+        ui.doubleSpinBoxTripleSpeed->value());
+    audioBufferCache = changePlaybackSpeed(
+        mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
+        mediaHandle->getAudioInfo(),
+        ui.doubleSpinBoxTripleSpeed->value());
 
     ui.widgetController->setEnabled(true);
     ui.pushButtonPlay->setStatus(1);
 
-    audioSink->setVolume(1.0);
+    audioSink->setVolume(ui.sliderVolume->value() / 100.0);
     qDebug() << "Data size: " << audioBuffer->buffer().size();
+    qDebug() << "CacheData size: " << audioBufferCache->buffer().size();
+
     audioSink->start(audioBuffer);
+    if (audioSink->state() == QtAudio::IdleState) {
+        QMessageBox::critical(nullptr, "错误", "这似乎不是一个正确的音频文件！");
+        ui.widgetController->setEnabled(false);
+        ui.pushButtonPlay->setStatus(0);
+        return;
+    }
     return;
 }
 
+QBuffer* TideMediaPlayer::changePlaybackSpeed(QBuffer* inputBuffer, const QAudioFormat& format, float speedRatio)
+{
+    using namespace soundtouch;
+
+    if (!inputBuffer || format.sampleFormat() != QAudioFormat::Int16) {
+        qWarning() << "Invalid input buffer or unsupported format (only S16 supported).";
+        return nullptr;
+    }
+    inputBuffer->open(QIODevice::ReadOnly);
+    int channels = format.channelCount();
+    int sampleRate = format.sampleRate();
+    const int bytesPerSample = 2;
+    const int frameSize = bytesPerSample * channels;
+
+    QByteArray inputData = inputBuffer->data();
+    const int16_t* inSamples = reinterpret_cast<const int16_t*>(inputData.constData());
+    int totalSamples = inputData.size() / bytesPerSample;
+
+    // 预转换 S16 -> float
+    std::vector<float> floatSamples(totalSamples);
+    const float invScale = 1.0f / 32768.0f;
+    for (int i = 0; i < totalSamples; ++i) {
+        floatSamples[i] = inSamples[i] * invScale;
+    }
+
+    // SoundTouch 配置
+    soundTouch.setSampleRate(sampleRate);
+    soundTouch.setChannels(channels);
+    soundTouch.setTempo(speedRatio);
+
+    QByteArray result;
+    result.reserve(inputData.size());  // 最小预留原大小
+
+    constexpr int blockSize = 4096;
+    float outBuffer[blockSize];  // 栈上分配
+    int processed = 0;
+
+    // 主处理循环
+    int i = 0;
+    while (i < totalSamples) {
+        int remain = totalSamples - i;
+        int send = remain > blockSize ? blockSize : remain;
+        soundTouch.putSamples(&floatSamples[i], send / channels);
+        i += send;
+
+        int received;
+        do {
+            received = soundTouch.receiveSamples(outBuffer, blockSize / channels);
+            if (received > 0) {
+                const int outCount = received * channels;
+                for (int j = 0; j < outCount; ++j) {
+                    float v = std::clamp(outBuffer[j], -1.0f, 1.0f);
+                    int16_t sample = static_cast<int16_t>(v * 32767.0f);
+                    result.append(reinterpret_cast<const char*>(&sample), 2);
+                }
+                processed += received;
+            }
+        } while (received > 0);
+    }
+
+    // flush
+    soundTouch.flush();
+    int received;
+    do {
+        received = soundTouch.receiveSamples(outBuffer, blockSize / channels);
+        const int outCount = received * channels;
+        for (int j = 0; j < outCount; ++j) {
+            float v = std::clamp(outBuffer[j], -1.0f, 1.0f);
+            int16_t sample = static_cast<int16_t>(v * 32767.0f);
+            result.append(reinterpret_cast<const char*>(&sample), 2);
+        }
+    } while (received > 0);
+
+    // 输出
+    QBuffer* outputBuffer = new QBuffer();
+    outputBuffer->setData(result);
+    outputBuffer->open(QIODevice::ReadOnly);
+    return outputBuffer;
+}
 void TideMediaPlayer::openFile()  
 {  
     // 重置信息以应对多次打开
@@ -138,7 +233,8 @@ void TideMediaPlayer::openFile()
         if (!mediaHandle->loadMedia()) {
             QMessageBox::critical(nullptr, "错误", "未知的文件类型！");  
             return;
-        }  
+        }
+        this->setWindowTitle("TideMediaPlayer - " + QFileInfo(fileName).fileName());
         refreshImage(true);
         refreshAudio(true);
         refreshVideo(true);
@@ -176,7 +272,6 @@ void TideMediaPlayer::sliderUserValueChanged()
         refreshAudio(false);
     }
 }
-
 QString formatMillisecondsToTime(qint64 milliseconds) {
     qint64 totalSeconds = milliseconds / 1000;
     qint64 hours = totalSeconds / 3600;
@@ -191,11 +286,24 @@ QString formatMillisecondsToTime(qint64 milliseconds) {
 void TideMediaPlayer::stageClockGoing()
 {
     if (ui.pushButtonPlay->getStatus()) {
-        if (audioSink->state() == QtAudio::IdleState) audioSink->resume();
-        ui.horizontalSlider->setValue(ui.horizontalSlider->value() + 10);
+        if (audioSink && audioSink->state() == QtAudio::SuspendedState) audioSink->resume();
+        ui.horizontalSlider->setValue(ui.horizontalSlider->value() + 100 * ui.doubleSpinBoxTripleSpeed->value());
         ui.labelMediaStatus->setText(formatMillisecondsToTime(ui.horizontalSlider->value()) + " / " + formatMillisecondsToTime(ui.horizontalSlider->maximum()));
     }
     else {
-         if (audioSink) audioSink->suspend();
+        if (audioSink && audioSink->state() == QtAudio::ActiveState) audioSink->suspend();
     }
+}
+void TideMediaPlayer::volumeValueChanged(int value)
+{
+    qreal linearVolume = QtAudio::convertVolume(value / qreal(100.0),
+        QtAudio::LogarithmicVolumeScale,
+        QtAudio::LinearVolumeScale);
+    audioSink->setVolume(linearVolume);
+    ui.volumeLabel->setText(QString("音量: %1%2").arg(value).arg("%"));
+}
+
+void TideMediaPlayer::speedRatioChanged(double)
+{
+    refreshAudio(false);
 }
