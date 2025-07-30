@@ -7,6 +7,8 @@
 #include <qbuffer.h>
 #include <QAudioFormat>
 
+#include <deque>
+
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -21,6 +23,8 @@ extern "C" {
 #pragma comment(lib, "avcodec.lib")
 #pragma comment(lib, "avutil.lib")
 #pragma comment(lib, "swresample.lib")
+#pragma comment(lib, "swscale.lib")
+
 
 #define TMH_UNKNOWN -1
 #define TMH_VIDEO 0
@@ -28,11 +32,16 @@ extern "C" {
 #define TMH_AUDIO 2
 
 
+struct VedioData {
+	std::deque<QPixmap>* image = nullptr;
+	QBuffer* pcmBuffer = nullptr;
+};
+
+
 class TideMediaHandle : public QFile
 {
 	Q_OBJECT;
 public:
-	//using QFile::QFile;
 	TideMediaHandle()
 		: QFile() {
 	}
@@ -63,21 +72,26 @@ public:
 	static void init();
 
 	bool loadMedia();
-	bool loadAudio();
 	int getMediaType();
 	QPixmap getImagePixmap();
 	QBuffer* decodeAudioToQBuffer(uint64_t preDecodingSec);
-	// QBuffer* getPCMAudio(uint64_t startTime, uint64_t preDecodingSec);
-	//void setCacheAudioNULL();
+	VedioData decodeVedioToQBuffer(uint64_t preDecodingSec);
 	QAudioFormat getAudioInfo();
 	bool setPlayTimestamp(uint64_t timestamp);
 	int64_t getDuration();
+
 	
 private:
+	bool mediaFileInit();
+	bool loadAudio();
+	bool loadVideo();
+
 	int mediaType = TMH_UNKNOWN;
 	AVFormatContext* formatContext = nullptr;
-	AVCodecContext* codec_ctx = nullptr;
+	AVCodecContext* audioCodecCtx = nullptr;
+	AVCodecContext* vedioCodecCtx = nullptr;
 	int audioIndex;
+	int vedioIndex;
 
 	const static int MAXERRORTRY = 10;
 };

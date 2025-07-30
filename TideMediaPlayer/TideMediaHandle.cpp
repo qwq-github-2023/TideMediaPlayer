@@ -83,7 +83,7 @@ namespace Tide
 
 TideMediaHandle::~TideMediaHandle()
 {
-    avcodec_free_context(&codec_ctx);
+    avcodec_free_context(&audioCodecCtx);
     avformat_close_input(&formatContext);
 }
 
@@ -101,36 +101,12 @@ TideMediaHandle::~TideMediaHandle()
 //}
 
 void TideMediaHandle::init() {
-    //sqlInit();
 }
 
-bool TideMediaHandle::loadAudio()
+bool TideMediaHandle::mediaFileInit()
 {
     this->reset();
-    //QFileInfo fileInfo(*this);
-
-    //QDateTime modified = fileInfo.lastModified();
-    //QString createTableSql = QString(R"(
-    //    CREATE TABLE IF NOT EXISTS %1 (
-    //        startTime INTEGER PRIMARY KEY AUTOINCREMENT,
-    //        durationTime INTEGER,
-    //        data BLOB
-    //    )
-    //)").arg(modified.toString());
-
-
-    //QSqlQuery query;
-    //if (!query.exec(createTableSql)) {
-    //    qDebug() << "Failed to create table: " << query.lastError().text();
-    //}
-    //Tide::db.commit();
-    //av_log_set_level(AV_LOG_ERROR);
-    //av_log_set_callback(qt_ffmpeg_log_callback);
     QFile* audioFile = this;
-    //if (!audioFile || !audioFile->isOpen()) {
-    //    qDebug() << "QFile pointer is null or file not opened.";
-    //    return false;
-    //}
     constexpr int bufferSize = 8192;
     uint8_t* buffer = (uint8_t*)av_malloc(bufferSize);
 
@@ -151,6 +127,15 @@ bool TideMediaHandle::loadAudio()
         avformat_close_input(&formatContext);
         return false;
     }
+    return true;
+}
+
+bool TideMediaHandle::loadAudio()
+{
+    if (formatContext == nullptr) {
+        qDebug() << "Format context is null, cannot load audio.";
+        return false;
+	}
     audioIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
 
     AVStream* st = formatContext->streams[audioIndex];
@@ -161,14 +146,41 @@ bool TideMediaHandle::loadAudio()
         qDebug() << "Could not find codec.";
         return false;
     }
-    codec_ctx = avcodec_alloc_context3(codec);
-    if (!codec_ctx)
+    audioCodecCtx = avcodec_alloc_context3(codec);
+    if (!audioCodecCtx)
     {
         qDebug() << "Could not allocate codec context.";
         return false;
     }
-    avcodec_parameters_to_context(codec_ctx, st->codecpar);
-    avcodec_open2(codec_ctx, codec, nullptr);
+    avcodec_parameters_to_context(audioCodecCtx, st->codecpar);
+    avcodec_open2(audioCodecCtx, codec, nullptr);
+    qDebug() << "audio duration:" << formatContext->duration;
+}
+
+bool TideMediaHandle::loadVideo()
+{
+    if (formatContext == nullptr) {
+        qDebug() << "Format context is null, cannot load vedio.";
+        return false;
+    }
+    vedioIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
+
+    AVStream* st = formatContext->streams[vedioIndex];
+    //找到解码器
+    const AVCodec* codec = avcodec_find_decoder(st->codecpar->codec_id);
+    if (!codec)
+    {
+        qDebug() << "Could not find codec.";
+        return false;
+    }
+    vedioCodecCtx = avcodec_alloc_context3(codec);
+    if (!vedioCodecCtx)
+    {
+        qDebug() << "Could not allocate codec context.";
+        return false;
+    }
+    avcodec_parameters_to_context(vedioCodecCtx, st->codecpar);
+    avcodec_open2(vedioCodecCtx, codec, nullptr);
     qDebug() << "vedio duration:" << formatContext->duration;
 }
 
@@ -185,6 +197,8 @@ bool TideMediaHandle::loadMedia()
         mediaType = TMH_IMAGE;
     } else if (type.name().startsWith("video/"))  {
         mediaType = TMH_VIDEO;
+        loadAudio();
+		loadVideo();
     } else {
         mediaType = TMH_UNKNOWN;
     }
@@ -212,22 +226,26 @@ QPixmap TideMediaHandle::getImagePixmap()
 }
 
 QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
-    //this->reset();
+    // 校验文件类型
+    if (mediaType != TMH_AUDIO && mediaType != TMH_VIDEO) {
+        qDebug() << "decodeAudioToQBuffer called on non-audio/video media type.";
+		return nullptr;
+    }
     AVChannelLayout out_channel_layout;
     AVChannelLayout in_channel_layout;
     av_channel_layout_default(&out_channel_layout, 2);
 
-    av_channel_layout_copy(&in_channel_layout, &codec_ctx->ch_layout);
+    av_channel_layout_copy(&in_channel_layout, &audioCodecCtx->ch_layout);
     // 初始化SwrContext
     SwrContext* swr_ctx = nullptr;
     int ret = swr_alloc_set_opts2(
         &swr_ctx,
         &out_channel_layout,          // 输出通道布局
         AV_SAMPLE_FMT_S16,            // 输出采样格式
-        codec_ctx->sample_rate,       // 输出采样率
-        &codec_ctx->ch_layout,        // 输入通道布局
-        codec_ctx->sample_fmt,        // 输入采样格式
-        codec_ctx->sample_rate,       // 输入采样率
+        audioCodecCtx->sample_rate,       // 输出采样率
+        &audioCodecCtx->ch_layout,        // 输入通道布局
+        audioCodecCtx->sample_fmt,        // 输入采样格式
+        audioCodecCtx->sample_rate,       // 输入采样率
         0,                            // 日志偏移量（通常为0）
         nullptr                       // 日志上下文（通常为nullptr）
     );
@@ -243,12 +261,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
         av_channel_layout_uninit(&in_channel_layout);
         return nullptr;
     }
-
-    //uint64_t target_pts = startTime; // * (AV_TIME_BASE / 1000);
-    //if (av_seek_frame(formatContext, audioIndex, target_pts, AVSEEK_FLAG_BACKWARD) < 0) {
-    //    qDebug() << stderr << "Failed to seek.";
-    //}
-    avcodec_flush_buffers(codec_ctx);
+    avcodec_flush_buffers(audioCodecCtx);
     QBuffer* pcmBuffer = new QBuffer();
     pcmBuffer->open(QIODevice::WriteOnly);
     AVPacket* pkt = av_packet_alloc();
@@ -276,36 +289,24 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
 			qDebug() << "Error reading frame:" << ret;
         }
         if (pkt->stream_index == audioIndex) {
-            if (avcodec_send_packet(codec_ctx, pkt) == 0) {
-                // uint8_t* out_data[1] = { nullptr };
-                while (avcodec_receive_frame(codec_ctx, frame) == 0) {
+            if (avcodec_send_packet(audioCodecCtx, pkt) == 0) {
+                while (avcodec_receive_frame(audioCodecCtx, frame) == 0) {
                     // 计算当前帧的时长
                     int64_t frame_duration = int64_t(frame->nb_samples) * 1000000 / frame->sample_rate;
 
                     // 转换音频为S16 PCM格式
                    int out_samples = swr_get_out_samples(swr_ctx, frame->nb_samples);
-                  
-                    /*if (av_samples_alloc(&out_data[0], nullptr, codec_ctx->ch_layout.nb_channels, out_samples, AV_SAMPLE_FMT_S16, 0) < 1) {
-                        qDebug() << "Failed to allocate output buffer for audio conversion.";
-                        return nullptr;
-                    }*/
-                    /*int converted = swr_convert(swr_ctx, &out_data[0], out_samples,
-                        (const uint8_t**)frame->data, frame->nb_samples);*/
 					int converted = swr_convert(swr_ctx, &buf, out_samples, (const uint8_t**)frame->extended_data, frame->nb_samples);
-                    int bufferSize = av_samples_get_buffer_size(nullptr, codec_ctx->ch_layout.nb_channels, converted, AV_SAMPLE_FMT_S16, 1);
+                    int bufferSize = av_samples_get_buffer_size(nullptr, audioCodecCtx->ch_layout.nb_channels, converted, AV_SAMPLE_FMT_S16, 1);
                     if (converted == 0 || bufferSize == 0) continue;
 					// qDebug() << "bufferSize:" << bufferSize;
-                    // fwrite(out_data[0], 1, converted * codec_ctx->channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16), pcm_file);
-                    // pcmBuffer->write(reinterpret_cast<const char*>(out_data[0]), converted * codec_ctx->ch_layout.nb_channels * av_get_bytes_per_sample(AV_SAMPLE_FMT_S16));
                     pcmBuffer->write(reinterpret_cast<const char*>(buf), bufferSize);
                     //av_freep(&out_data[0]);
                     decoded_duration += frame_duration;
-
                     if (decoded_duration >= preDecodingSec/*(preDecodingSec / 1000.0)*/) {
                         decoding = false;
                         break;
                     }
-                    //out_data[0] = nullptr ;
                 }
                 
             }
@@ -322,42 +323,140 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
     return pcmBuffer;
 }
 
-//QBuffer* TideMediaHandle::getPCMAudio(uint64_t startTime, uint64_t preDecodingSec)
-//{
-//    startTime *= 1000;
-//    preDecodingSec *= 1000;
-//    
-//    if (startTime > formatContext->duration) {
-//		qWarning() << "Start time exceeds media duration.";
-//        return nullptr;
-//    }
-//
-//    if (startTime + preDecodingSec > formatContext->duration) {
-//        preDecodingSec = formatContext->duration - startTime;
-//        cacheAudio = nullptr;
-//    }
-//    else {
-//        if (startTime + 2 * preDecodingSec > formatContext->duration) {
-//            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, formatContext->duration - startTime - preDecodingSec, true).detach();
-//        }
-//        else {
-//            std::thread(&TideMediaHandle::decodeAudioToQBuffer, this, startTime + preDecodingSec, preDecodingSec, true).detach();
-//        }
-//    }
-//    return t ? t : decodeAudioToQBuffer(startTime, preDecodingSec);
-//}
+VedioData TideMediaHandle::decodeVedioToQBuffer(uint64_t preDecodingSec)
+{
+    // 校验文件类型
+    if (mediaType != TMH_VIDEO) {
+        qDebug() << "decodeAudioToQBuffer called on non-audio/video media type.";
+        return VedioData();
+    }
 
-//void TideMediaHandle::setCacheAudioNULL() {
-//	if (cacheAudio) delete cacheAudio;
-//    cacheAudio = nullptr;
-//    return;
-//}
+    // 校验文件类型
+    if (mediaType != TMH_AUDIO && mediaType != TMH_VIDEO) {
+        qDebug() << "decodeAudioToQBuffer called on non-audio/video media type.";
+        return VedioData();
+    }
+    AVChannelLayout out_channel_layout;
+    AVChannelLayout in_channel_layout;
+    av_channel_layout_default(&out_channel_layout, 2);
+
+    av_channel_layout_copy(&in_channel_layout, &audioCodecCtx->ch_layout);
+    // 初始化SwrContext
+    SwrContext* swr_ctx = nullptr;
+    int ret = swr_alloc_set_opts2(
+        &swr_ctx,
+        &out_channel_layout,          // 输出通道布局
+        AV_SAMPLE_FMT_S16,            // 输出采样格式
+        audioCodecCtx->sample_rate,       // 输出采样率
+        &audioCodecCtx->ch_layout,        // 输入通道布局
+        audioCodecCtx->sample_fmt,        // 输入采样格式
+        audioCodecCtx->sample_rate,       // 输入采样率
+        0,                            // 日志偏移量（通常为0）
+        nullptr                       // 日志上下文（通常为nullptr）
+    );
+    if (ret < 0 || !swr_ctx) {
+        qDebug() << "Failed to allocate SwrContext\n";
+        av_channel_layout_uninit(&in_channel_layout);
+        return VedioData();
+    }
+
+    if ((ret = swr_init(swr_ctx)) < 0) {
+        qDebug() << "Failed to initialize SwrContext\n";
+        swr_free(&swr_ctx);
+        av_channel_layout_uninit(&in_channel_layout);
+        return VedioData();
+    }
+    avcodec_flush_buffers(audioCodecCtx);
+    AVPacket* pkt = av_packet_alloc();
+    QBuffer* pcmBuffer = new QBuffer();
+    pcmBuffer->open(QIODevice::WriteOnly);
+    AVFrame* frame = av_frame_alloc();
+    uint8_t* buf = (uint8_t*)av_malloc(192000); // 足够大
+
+    int64_t decoded_duration = 0;
+    bool decoding = true;
+
+    int errorTry = 0;
+
+    AVFrame* rgb_frame = av_frame_alloc();
+    int width = vedioCodecCtx->width, height = vedioCodecCtx->height;
+    int num_bytes = av_image_get_buffer_size(AV_PIX_FMT_RGB32, width, height, 1);
+    uint8_t* buffer = (uint8_t*)av_malloc(num_bytes);
+    av_image_fill_arrays(rgb_frame->data, rgb_frame->linesize, buffer, AV_PIX_FMT_RGB32, width, height, 1);
+    SwsContext* sws_ctx = sws_getContext(
+        width, height, vedioCodecCtx->pix_fmt,
+        width, height, AV_PIX_FMT_RGB32,
+        SWS_BILINEAR, nullptr, nullptr, nullptr);
+
+    VedioData vedioData;
+	vedioData.pcmBuffer = pcmBuffer;
+    vedioData.image = new std::deque<QPixmap>;
+
+    while (true) {
+        int ret = av_read_frame(formatContext, pkt);
+        if (ret == AVERROR_EOF)
+            break;
+        if (!decoding || (ret < 0)) {
+            if (errorTry >= MAXERRORTRY) {
+                qDebug() << "Too many errors, stopping decoding.";
+                break;
+            }
+            else {
+                ++errorTry;
+                continue;
+            }
+            qDebug() << "Error reading frame:" << ret;
+        }
+        if (pkt->stream_index == audioIndex) {
+            if (avcodec_send_packet(audioCodecCtx, pkt) == 0) {
+                while (avcodec_receive_frame(audioCodecCtx, frame) == 0) {
+                    // 计算当前帧的时长
+                    int64_t frame_duration = int64_t(frame->nb_samples) * 1000000 / frame->sample_rate;
+
+                    // 转换音频为S16 PCM格式
+                    int out_samples = swr_get_out_samples(swr_ctx, frame->nb_samples);
+                    int converted = swr_convert(swr_ctx, &buf, out_samples, (const uint8_t**)frame->extended_data, frame->nb_samples);
+                    int bufferSize = av_samples_get_buffer_size(nullptr, audioCodecCtx->ch_layout.nb_channels, converted, AV_SAMPLE_FMT_S16, 1);
+                    if (converted == 0 || bufferSize == 0) continue;
+                    // qDebug() << "bufferSize:" << bufferSize;
+                    pcmBuffer->write(reinterpret_cast<const char*>(buf), bufferSize);
+                    //av_freep(&out_data[0]);
+                    decoded_duration += frame_duration;
+                    if (decoded_duration >= preDecodingSec/*(preDecodingSec / 1000.0)*/) {
+                        decoding = false;
+                        break;
+                    }
+                }
+
+            }
+        }
+        else if (pkt->stream_index == vedioIndex) {
+            if (avcodec_send_packet(vedioCodecCtx, pkt) == 0) {
+                while (avcodec_receive_frame(vedioCodecCtx, frame) == 0) {
+                    // 转换视频帧到RGB格式
+                    sws_scale(sws_ctx, frame->data, frame->linesize, 0, height, rgb_frame->data, rgb_frame->linesize);
+                    // 这里可以将rgb_frame保存到VedioData中
+                    // 例如，使用QImage或其他方式处理rgb_frame
+                    QImage image(rgb_frame->data[0], width, height, rgb_frame->linesize[0], QImage::Format_RGB32);
+                    QImage copy = image.copy();
+					vedioData.image->push_back(QPixmap::fromImage(copy));
+                }
+
+            }
+		}
+    }
+    return VedioData();
+}
 
 QAudioFormat TideMediaHandle::getAudioInfo()
 {
     QAudioFormat format;
-    format.setSampleRate(codec_ctx->sample_rate);
-    format.setChannelCount(codec_ctx->ch_layout.nb_channels);
+    if (mediaType != TMH_AUDIO && mediaType != TMH_VIDEO) {
+        qDebug() << "getAudioInfo called on non-audio/video media type.";
+        return format;
+    }
+    format.setSampleRate(audioCodecCtx->sample_rate);
+    format.setChannelCount(audioCodecCtx->ch_layout.nb_channels);
     format.setSampleFormat(QAudioFormat::Int16);
     return format;
 }
@@ -369,11 +468,13 @@ bool TideMediaHandle::setPlayTimestamp(uint64_t timestamp) {
         qDebug() << stderr << "Failed to seek.";
         return false;
     }
-    avcodec_flush_buffers(codec_ctx);
+    avcodec_flush_buffers(audioCodecCtx);
     return true;
 }
 
 int64_t TideMediaHandle::getDuration()
 {
-	return formatContext ? formatContext->duration : 0;
+    if (mediaType == TMH_AUDIO || mediaType == TMH_VIDEO) return formatContext ? formatContext->duration : 0;
+	qDebug() << "getDuration called on non-audio/video media type.";
+    return 0;
 }
