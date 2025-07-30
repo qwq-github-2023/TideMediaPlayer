@@ -255,7 +255,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
     AVFrame* frame = av_frame_alloc();
     uint8_t* buf = (uint8_t*)av_malloc(192000); // 足够大
 
-    uint64_t decoded_duration = 0;
+    int64_t decoded_duration = 0;
     bool decoding = true;
 
     int errorTry = 0;
@@ -264,7 +264,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
 		int ret = av_read_frame(formatContext, pkt);
         if (ret == AVERROR_EOF)
             break;
-        if (decoding && (ret < 0)) {
+        if (!decoding || (ret < 0)) {
             if (errorTry >= MAXERRORTRY) {
 				qDebug() << "Too many errors, stopping decoding.";
                 break;
@@ -280,7 +280,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
                 // uint8_t* out_data[1] = { nullptr };
                 while (avcodec_receive_frame(codec_ctx, frame) == 0) {
                     // 计算当前帧的时长
-                    uint64_t frame_duration = (uint64_t)frame->nb_samples * 1000000 / codec_ctx->sample_rate;
+                    int64_t frame_duration = int64_t(frame->nb_samples) * 1000000 / frame->sample_rate;
 
                     // 转换音频为S16 PCM格式
                    int out_samples = swr_get_out_samples(swr_ctx, frame->nb_samples);
