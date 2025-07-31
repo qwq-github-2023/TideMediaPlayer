@@ -84,6 +84,7 @@ namespace Tide
 TideMediaHandle::~TideMediaHandle()
 {
     avcodec_free_context(&audioCodecCtx);
+    avcodec_free_context(&vedioCodecCtx);
     avformat_close_input(&formatContext);
 }
 
@@ -192,11 +193,13 @@ bool TideMediaHandle::loadMedia()
     this->open(QIODevice::ReadOnly);
     if (type.name().startsWith("audio/")) {
         mediaType = TMH_AUDIO;
+        mediaFileInit();
         loadAudio();
     } else if (type.name().startsWith("image/"))  {
         mediaType = TMH_IMAGE;
     } else if (type.name().startsWith("video/"))  {
         mediaType = TMH_VIDEO;
+        mediaFileInit();
         loadAudio();
 		loadVideo();
     } else {
