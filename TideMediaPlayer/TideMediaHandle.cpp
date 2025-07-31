@@ -264,7 +264,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
         av_channel_layout_uninit(&in_channel_layout);
         return nullptr;
     }
-    avcodec_flush_buffers(audioCodecCtx);
+    // avcodec_flush_buffers(audioCodecCtx);
     QBuffer* pcmBuffer = new QBuffer();
     pcmBuffer->open(QIODevice::WriteOnly);
     AVPacket* pkt = av_packet_alloc();
@@ -280,7 +280,7 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
 		int ret = av_read_frame(formatContext, pkt);
         if (ret == AVERROR_EOF)
             break;
-        if (!decoding || (ret < 0)) {
+        if (ret < 0) {
             if (errorTry >= MAXERRORTRY) {
 				qDebug() << "Too many errors, stopping decoding.";
                 break;
@@ -308,12 +308,14 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
                     decoded_duration += frame_duration;
                     if (decoded_duration >= preDecodingSec/*(preDecodingSec / 1000.0)*/) {
                         decoding = false;
-                        break;
+                        //break;
                     }
                 }
                 
             }
+       
         }
+        if (!decoding) break;
     }
 
     pcmBuffer->close();
