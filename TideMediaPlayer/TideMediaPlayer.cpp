@@ -250,12 +250,15 @@ void TideMediaPlayer::resetScale()
     ui.openGLWidgetStage->m_scaled = false;
 }
 void TideMediaPlayer::mouseMoveEvent(QMouseEvent* event) {
+    
     // 控制栏显示
     if (ui.openGLWidgetStage->isScaled()) {
         ui.pushButtonResetScale->show();
     }
-    ui.widgetController->show();
-    hideControlsTimer.start(5000);
+    if (mediaHandle->getMediaType() != TMH_IMAGE) {
+        ui.widgetController->show();
+        hideControlsTimer.start(5000);
+    }
     QMainWindow::mouseMoveEvent(event);
 }
 void TideMediaPlayer::resizeEvent(QResizeEvent* event) {
