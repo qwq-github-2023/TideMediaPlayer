@@ -58,8 +58,6 @@ private:
 
     soundtouch::SoundTouch soundTouch;
     QAudioSink* audioSink;
-    QBuffer* audioBuffer;
-    QBuffer* audioBufferCache;
     TideIODevice* audioStream;
     bool isAudioPlaying;
 

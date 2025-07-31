@@ -61,3 +61,21 @@ void TideIODevice::printStatus() const
     qDebug() << "usedBytes(): " << usedBytes();
     qDebug() << "availableSpace(): " << availableSpace();
 }
+
+void TideIODevice::dumpToFile(QString fileName) const
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        qDebug() << "Failed to open file for dumping: " << fileName;
+        return;
+    }
+    qint64 bytesToWrite = usedBytes();
+    if (tail + bytesToWrite < capacity) {
+        file.write(buffer + tail, bytesToWrite);
+    } else {
+        file.write(buffer + tail, capacity - tail);
+        file.write(buffer, bytesToWrite - (capacity - tail));
+    }
+    file.close();
+	qDebug() << "Dumped " << bytesToWrite << " bytes to " << fileName;
+}

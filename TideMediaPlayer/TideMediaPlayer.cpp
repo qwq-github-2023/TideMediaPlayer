@@ -2,7 +2,7 @@
 #include "AboutDialog.h"
 #include "DialogSetting.h"
 #include "Config.h"
-
+#include <QStandardPaths>
 
 TideMediaPlayer::TideMediaPlayer(QWidget *parent)  
     : QMainWindow(parent)  
@@ -79,22 +79,20 @@ void TideMediaPlayer::refreshVideo(bool reload)
     return;
 }
 void TideMediaPlayer::FuckAudioCache() {
+    QBuffer* audioBuffer;
     while (audioStream && mediaHandle->getMediaType() != TMH_IMAGE) {
         if (audioStream->usedBytes() * 2 > audioStream->capacitySize()) {
             ::Sleep(200);
             continue;
         }
-        audioStream->printStatus();
-        qDebug() << "(bufferLow)Data size: " << audioBuffer->buffer().size();
-        audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
-        delete audioBuffer;
-        if (audioBufferCache) {
-            audioBuffer = audioBufferCache;
-        }
-        audioBufferCache = changePlaybackSpeed(
+        audioBuffer = changePlaybackSpeed(
             mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
             mediaHandle->getAudioInfo(),
             ui.doubleSpinBoxTripleSpeed->value());
+        qDebug() << "(bufferLow) Write data size: " << audioBuffer->buffer().size();
+        audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
+        delete audioBuffer;
+        audioStream->printStatus();
     }
     
 }
@@ -117,40 +115,24 @@ void TideMediaPlayer::refreshAudio(bool reload)
             qDebug() << "QAudoSink state changed: " << audioSink->state();
             });
     }
-    if (audioBuffer) delete audioBuffer;
-    if (audioBufferCache) delete audioBufferCache;
-    if (audioStream) delete audioStream;
+    if (audioStream) delete audioStream; 
+    audioStream = new TideIODevice(audioSink->format().bytesPerFrame() * audioSink->format().sampleRate() * 
+                                                        Config::getValue("preDecodingSec").toLongLong() *
+                                                        5);
     mediaHandle->setPlayTimestamp(ui.horizontalSlider->value() * 1000);
 
-    audioBuffer = changePlaybackSpeed(
-        mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
-        mediaHandle->getAudioInfo(),
-        ui.doubleSpinBoxTripleSpeed->value());
-    
-    audioStream = new TideIODevice(audioBuffer->buffer().size() * 5);
-    audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
-    audioStream->printStatus();
-    qDebug() << "WriteData size: " << audioBuffer->buffer().size();
-    delete audioBuffer;
-    for (int i=0; i < 2; ++i) {
-        audioBuffer = changePlaybackSpeed(
+    for (int i = 0; i < 3; ++i) {
+        QBuffer* audioBuffer = changePlaybackSpeed(
             mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
             mediaHandle->getAudioInfo(),
             ui.doubleSpinBoxTripleSpeed->value());
         audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
         audioStream->printStatus();
-        qDebug() << "WriteData size: " << audioBuffer->buffer().size();
+        qDebug() << "Init WriteData size: " << audioBuffer->buffer().size();
         delete audioBuffer;
     }
+	audioStream->dumpToFile(QStandardPaths::writableLocation(QStandardPaths::MusicLocation) + "/audioStream-dmp.pcm");
     
-    audioBuffer = changePlaybackSpeed(
-        mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
-        mediaHandle->getAudioInfo(),
-        ui.doubleSpinBoxTripleSpeed->value());
-    audioBufferCache = changePlaybackSpeed(
-        mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
-        mediaHandle->getAudioInfo(),
-        ui.doubleSpinBoxTripleSpeed->value());
     // connect(audioStream, &TideIODevice::bufferLow, this, &TideMediaPlayer::FuckAudioCache, Qt::QueuedConnection);
     // std::thread([&]() {FuckAudioCache(); }).detach();
     

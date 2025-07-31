@@ -5,7 +5,7 @@
 #include <QByteArray>
 #include <QDebug>
 #include <QThread>
-
+#include <QFile>
 class TideIODevice : public QIODevice {
     Q_OBJECT
 public:
@@ -18,6 +18,7 @@ public:
     qint64 availableSpace() const;
     qint64 capacitySize() const;
     void printStatus() const;
+    void dumpToFile(QString fileName) const;
 private:
     char* buffer;
     qint64 head = 0;
