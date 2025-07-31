@@ -129,6 +129,7 @@ void TideMediaPlayer::refreshAudio(bool reload)
     
     audioStream = new TideIODevice(audioBuffer->buffer().size() * 5);
     audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
+    audioStream->printStatus();
     qDebug() << "WriteData size: " << audioBuffer->buffer().size();
     delete audioBuffer;
     for (int i=0; i < 2; ++i) {
@@ -137,6 +138,7 @@ void TideMediaPlayer::refreshAudio(bool reload)
             mediaHandle->getAudioInfo(),
             ui.doubleSpinBoxTripleSpeed->value());
         audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
+        audioStream->printStatus();
         qDebug() << "WriteData size: " << audioBuffer->buffer().size();
         delete audioBuffer;
     }
