@@ -22,22 +22,6 @@ TideMediaPlayer::TideMediaPlayer(QWidget *parent)
     
     ui.openGLWidgetStage->setTideMediaPlayer(this);
     Config::init();
-
-    connect(audioSink, &QAudioSink::stateChanged, this, [&](QAudio::State state) {
-        if (ui.pushButtonPlay->getStatus() && audioSink->state() == QtAudio::StoppedState && mediaHandle->getMediaType() == TMH_AUDIO) {
-            // 音频播放结束，重置音频缓冲区
-            if (audioBuffer)  delete audioBuffer;
-            if (audioBufferCache) {
-                audioBuffer = audioBufferCache;
-            }
-            qDebug() << "Data size: " << audioBuffer->buffer().size();
-            audioSink->start(audioBuffer);
-            audioBufferCache = changePlaybackSpeed(
-                mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
-                mediaHandle->getAudioInfo(),
-                ui.doubleSpinBoxTripleSpeed->value());
-            }
-        });
     
     connect(&stageSliderTimer, &QTimer::timeout, this, &TideMediaPlayer::stageClockGoing);
     stageSliderTimer.setSingleShot(false);
@@ -94,12 +78,33 @@ void TideMediaPlayer::refreshVideo(bool reload)
     ui.widgetController->setEnabled(true);
     return;
 }
+void TideMediaPlayer::FuckAudioCache() {
+    while (audioStream && mediaHandle->getMediaType() != TMH_IMAGE) {
+        if (audioStream->usedBytes() * 2 > audioStream->capacitySize()) {
+            ::Sleep(200);
+            continue;
+        }
+        audioStream->printStatus();
+        qDebug() << "(bufferLow)Data size: " << audioBuffer->buffer().size();
+        audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
+        delete audioBuffer;
+        if (audioBufferCache) {
+            audioBuffer = audioBufferCache;
+        }
+        audioBufferCache = changePlaybackSpeed(
+            mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
+            mediaHandle->getAudioInfo(),
+            ui.doubleSpinBoxTripleSpeed->value());
+    }
+    
+}
 void TideMediaPlayer::refreshAudio(bool reload)
 {
     if (mediaHandle->getMediaType() != TMH_AUDIO) return;
     if (audioSink) audioSink->stop();
     if (reload) {
-        
+        ui.horizontalSlider->setRange(0, mediaHandle->getDuration() / 1000);
+        ui.horizontalSlider->setValue(0);
         QAudioFormat format = mediaHandle->getAudioInfo();
         qDebug("orgSampleRate: %d, channelCount: %d, sampleFormat: %d",
             format.sampleRate(), format.channelCount(), format.sampleFormat()
@@ -108,12 +113,34 @@ void TideMediaPlayer::refreshAudio(bool reload)
         QAudioDevice outputDevice = QMediaDevices::defaultAudioOutput();
         if (audioSink) delete audioSink;
         audioSink = new QAudioSink(outputDevice, format);
-        ui.horizontalSlider->setRange(0, mediaHandle->getDuration() / 1000);
-        ui.horizontalSlider->setValue(0);
+        connect(audioSink, &QAudioSink::stateChanged, this, [&](QAudio::State state) {
+            qDebug() << "QAudoSink state changed: " << audioSink->state();
+            });
     }
     if (audioBuffer) delete audioBuffer;
     if (audioBufferCache) delete audioBufferCache;
+    if (audioStream) delete audioStream;
     mediaHandle->setPlayTimestamp(ui.horizontalSlider->value() * 1000);
+
+    audioBuffer = changePlaybackSpeed(
+        mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
+        mediaHandle->getAudioInfo(),
+        ui.doubleSpinBoxTripleSpeed->value());
+    
+    audioStream = new TideIODevice(audioBuffer->buffer().size() * 5);
+    audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
+    qDebug() << "WriteData size: " << audioBuffer->buffer().size();
+    delete audioBuffer;
+    for (int i=0; i < 2; ++i) {
+        audioBuffer = changePlaybackSpeed(
+            mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
+            mediaHandle->getAudioInfo(),
+            ui.doubleSpinBoxTripleSpeed->value());
+        audioStream->writeData(audioBuffer->buffer().data(), audioBuffer->buffer().size());
+        qDebug() << "WriteData size: " << audioBuffer->buffer().size();
+        delete audioBuffer;
+    }
+    
     audioBuffer = changePlaybackSpeed(
         mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
         mediaHandle->getAudioInfo(),
@@ -122,21 +149,15 @@ void TideMediaPlayer::refreshAudio(bool reload)
         mediaHandle->decodeAudioToQBuffer(Config::getValue("preDecodingSec").toULongLong() * 1000000),
         mediaHandle->getAudioInfo(),
         ui.doubleSpinBoxTripleSpeed->value());
+    // connect(audioStream, &TideIODevice::bufferLow, this, &TideMediaPlayer::FuckAudioCache, Qt::QueuedConnection);
+    // std::thread([&]() {FuckAudioCache(); }).detach();
+    
+    audioSink->setVolume(ui.sliderVolume->value() / 100.0);
+    audioSink->start(audioStream);
 
     ui.widgetController->setEnabled(true);
     ui.pushButtonPlay->setStatus(1);
 
-    audioSink->setVolume(ui.sliderVolume->value() / 100.0);
-    qDebug() << "Data size: " << audioBuffer->buffer().size();
-    qDebug() << "CacheData size: " << audioBufferCache->buffer().size();
-
-    audioSink->start(audioBuffer);
-    if (audioSink->state() == QtAudio::IdleState) {
-        QMessageBox::critical(nullptr, "错误", "这似乎不是一个正确的音频文件！");
-        ui.widgetController->setEnabled(false);
-        ui.pushButtonPlay->setStatus(0);
-        return;
-    }
     return;
 }
 

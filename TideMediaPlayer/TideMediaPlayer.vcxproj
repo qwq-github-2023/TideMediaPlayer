@@ -114,6 +114,12 @@
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="DialogSetting.cpp" />
     <ClCompile Include="ImageButton.cpp" />
+    <ClCompile Include="TideIODevice.cpp">
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename).moc</QtMocFileName>
+      <DynamicSource Condition="'$(Configuration)|$(Platform)'=='Release|x64'">input</DynamicSource>
+      <QtMocFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename).moc</QtMocFileName>
+    </ClCompile>
     <ClCompile Include="WidgetStageGL.cpp" />
     <QtRcc Include="TideMediaPlayer.qrc" />
     <QtUic Include="DialogSetting.ui" />
@@ -125,6 +131,7 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <QtMoc Include="TideIODevice.h" />
     <QtMoc Include="ImageButton.h" />
     <QtMoc Include="DialogSetting.h" />
     <ClInclude Include="Config.h" />

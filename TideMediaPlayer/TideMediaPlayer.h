@@ -4,6 +4,7 @@
 #include <QtWidgets/QMainWindow>
 #include "ui_TideMediaPlayer.h"
 #include "TideMediaHandle.h"
+#include "TideIODevice.h"
 #include <QTimer>
 #include <QMouseEvent>
 #include <QPainter>
@@ -15,12 +16,14 @@
 #include <QAudioFormat>
 #include <QMediaDevices>
 #include <QSettings>
+#include <QMutex>
 #include <SoundTouch.h>
 #ifdef _DEBUG
 #pragma comment(lib, "SoundTouchDebug.lib")
 #else
 #pragma comment(lib, "SoundTouch.lib")
 #endif
+
 class TideMediaPlayer : public QMainWindow
 {
     Q_OBJECT
@@ -44,6 +47,7 @@ public slots:
     void sliderUserValueChanged();
     void volumeValueChanged(int value);
     void speedRatioChanged(double);
+    void FuckAudioCache();
 private:
     TideMediaHandle* mediaHandle;
     QTimer hideControlsTimer;
@@ -56,6 +60,7 @@ private:
     QAudioSink* audioSink;
     QBuffer* audioBuffer;
     QBuffer* audioBufferCache;
+    TideIODevice* audioStream;
     bool isAudioPlaying;
 
     void stageClockGoing();
