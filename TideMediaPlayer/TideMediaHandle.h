@@ -75,6 +75,7 @@ public:
 	int getMediaType();
 	QPixmap getImagePixmap();
 	QBuffer* decodeAudioToQBuffer(uint64_t preDecodingSec);
+	QBuffer* decodeAudioToQBuffer(uint64_t preDecodingSec, float tempo);
 	VedioData decodeVedioToQBuffer(uint64_t preDecodingSec);
 	QAudioFormat getAudioInfo();
 	bool setPlayTimestamp(uint64_t timestamp);

@@ -6,6 +6,12 @@
 #include <vector>
 #include <qbuffer.h>
 #include <qmutex.h>
+#include <SoundTouch.h>
+#ifdef _DEBUG
+#pragma comment(lib, "SoundTouchDebug.lib")
+#else
+#pragma comment(lib, "SoundTouch.lib")
+#endif
 
 extern "C" void qt_ffmpeg_log_callback(void* ptr, int level, const char* fmt, va_list vl) {
     if (level > av_log_get_level())
@@ -236,8 +242,8 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
     }
     AVChannelLayout out_channel_layout;
     AVChannelLayout in_channel_layout;
-    av_channel_layout_default(&out_channel_layout, 2);
-
+    //av_channel_layout_default(&out_channel_layout, audioCodecCtx->ch_layout.nb_channels);
+    av_channel_layout_copy(&out_channel_layout, &audioCodecCtx->ch_layout);
     av_channel_layout_copy(&in_channel_layout, &audioCodecCtx->ch_layout);
     // 初始化SwrContext
     SwrContext* swr_ctx = nullptr;
@@ -326,6 +332,84 @@ QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec) {
     av_channel_layout_uninit(&out_channel_layout);
 	av_free(buf);
     return pcmBuffer;
+}
+
+QBuffer* TideMediaHandle::decodeAudioToQBuffer(uint64_t preDecodingSec, float tempo) {
+    QBuffer* pcmBuffer = decodeAudioToQBuffer(preDecodingSec);
+    if (!pcmBuffer->isOpen())
+        pcmBuffer->open(QIODevice::ReadOnly);
+
+    QByteArray pcmData = pcmBuffer->data();
+    int channels = audioCodecCtx->ch_layout.nb_channels;
+    int totalSamples = pcmData.size() / sizeof(int16_t); // 总采样点数
+    int totalFrames = totalSamples / channels;           // 总帧数（每帧有 channels 个采样点）
+
+    // 2. int16_t 转 float，长度应该是 totalSamples
+    std::vector<float> floatSamples(totalSamples);
+    const int16_t* inSamples = reinterpret_cast<const int16_t*>(pcmData.constData());
+    for (int i = 0; i < totalSamples; ++i) {
+        floatSamples[i] = static_cast<float>(inSamples[i]) / 32768.0f;
+    }
+
+    // 3. 配置 SoundTouch
+    soundtouch::SoundTouch soundTouch;
+    soundTouch.setSampleRate(audioCodecCtx->sample_rate);
+    soundTouch.setChannels(channels);
+    soundTouch.setTempo(tempo); // 1.0=原速，2.0=两倍速
+
+    // 4. 处理部分：分帧送入 SoundTouch 并收集输出
+    const int frameSize = 1024; // 这里 frameSize 指“帧数”，不是采样点数
+    std::vector<float> outBuffer(frameSize * channels); // 一次最多输出 frameSize*channels 个采样点
+    std::vector<float> resultSamples; // 收集所有输出
+
+    int processedFrames = 0;
+    while (processedFrames < totalFrames) {
+        // 本次输入帧数
+        int chunkFrames = std::min(frameSize, totalFrames - processedFrames);
+
+        // 输入数据指针（以帧为单位）
+        const float* inputPtr = floatSamples.data() + processedFrames * channels;
+        soundTouch.putSamples(inputPtr, chunkFrames);
+
+        processedFrames += chunkFrames;
+
+        // 不断拉取已处理输出
+        int received;
+        do {
+            received = soundTouch.receiveSamples(outBuffer.data(), frameSize);
+            // received 是帧数，采样点数为 received * channels
+            if (received > 0) {
+                resultSamples.insert(resultSamples.end(), outBuffer.data(), outBuffer.data() + received * channels);
+            }
+        } while (received > 0);
+    }
+
+    // 5. flush SoundTouch，拉取结尾所有数据
+    soundTouch.flush();
+    int received;
+    do {
+        received = soundTouch.receiveSamples(outBuffer.data(), frameSize);
+        if (received > 0) {
+            resultSamples.insert(resultSamples.end(), outBuffer.data(), outBuffer.data() + received * channels);
+        }
+    } while (received > 0);
+
+    // 6. float -> int16_t 转回 PCM
+    QByteArray outputData;
+    outputData.resize(resultSamples.size() * sizeof(int16_t));
+    int16_t* outPCM = reinterpret_cast<int16_t*>(outputData.data());
+    for (size_t i = 0; i < resultSamples.size(); ++i) {
+        float v = std::clamp(resultSamples[i], -1.0f, 1.0f);
+        outPCM[i] = static_cast<int16_t>(v * 32767.0f);
+    }
+    
+    // 7. 存到新的 QBuffer
+    QBuffer* outputBuffer = new QBuffer();
+    outputBuffer->setData(outputData);
+	delete pcmBuffer; // 释放原来的 QBuffer
+    // outputBuffer->open(QIODevice::ReadOnly);
+    return outputBuffer;
+
 }
 
 VedioData TideMediaHandle::decodeVedioToQBuffer(uint64_t preDecodingSec)
